@@ -1,4 +1,4 @@
-Net/BGP version 0.03
+Net::BGP version 0.04
 =====================
 
 This module is an implementation of the BGP-4 inter-domain
@@ -26,8 +26,15 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
+  List::Util
   IO::Select
   IO::Socket
+
+For the test suite to work, additional these modules and
+libraries are need:
+
+  Test::More
+  Test::Harness
 
 AUTHOR
 

@@ -1,3 +1,7 @@
+#!/usr/bin/perl
+
+# $Id: Process.pm,v 1.14 2003/06/06 17:43:31 unimlo Exp $
+
 package Net::BGP::Process;
 
 use strict;
@@ -5,10 +9,11 @@ use vars qw( $VERSION );
 
 ## Inheritance and Versioning ##
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 ## Module Imports ##
 
+use Carp;
 use IO::Select;
 use IO::Socket;
 use Net::BGP::Peer qw( BGP_PORT TRUE FALSE );
@@ -30,9 +35,9 @@ sub new
         _error_fh      => new IO::Select(),
         _peer_list     => {},
         _peer_addr     => {},
-        _peer_sock     => {},
-        _peer_sock_fh  => {},
-        _peer_sock_map => {},
+        _trans_sock     => {},
+        _trans_sock_fh  => {},
+        _trans_sock_map=> {},
         _listen_socket => undef,
         _listen_port   => BGP_PORT
     };
@@ -42,6 +47,9 @@ sub new
         if ( $arg =~ /port/i ) {
             $this->{_listen_port} = $value;
         }
+	else {
+	    croak "Unknwon argument '$arg'";
+	}
     }
 
     bless($this, $class);
@@ -53,20 +61,20 @@ sub add_peer
 {
     my ($this, $peer) = @_;
 
-    if ( ! defined($this->{_peer_addr}->{$peer->{_peer_id}}) ) {
-        $this->{_peer_addr}->{$peer->{_peer_id}} = $peer;
-        $this->{_peer_list}->{$peer} = $peer;
-    }
+    $this->{_peer_addr}->{$peer->this_id}->{$peer->peer_id} = $peer if $peer->is_listener;;
+    $this->{_peer_list}->{$peer} = $peer;
 }
 
 sub remove_peer
 {
     my ($this, $peer) = @_;
-
     if ( defined($this->{_peer_list}->{$peer}) ) {
         $peer->stop();
-        $this->_update_select($peer);
-        delete $this->{_peer_addr}->{$peer->{_peer_id}};
+	foreach my $trans ($peer->transports)
+         {
+          $this->_update_select($trans);
+         };
+        delete $this->{_peer_addr}->{$peer->this_id}->{$peer->peer_id};
         delete $this->{_peer_list}->{$peer};
     }
 }
@@ -75,12 +83,16 @@ sub event_loop
 {
     my $this = shift();
     my ($time, $last_time, $delta, $min, $min_timer);
-    my ($peer, $ready, @ready);
     my ($timer);
 
+    my $sigorig = $SIG{'PIPE'};
+    unless (defined $SIG{'PIPE'}) {
+      $SIG{'PIPE'} = 'IGNORE';
+    }
+
     # Poll each peer and create listen socket if any is a listener
-    foreach $peer ( values(%{$this->{_peer_list}}) ) {
-        if ( $peer->_is_listener() ) {
+    foreach my $peer ( values(%{$this->{_peer_list}}) ) {
+        if ( $peer->is_listener() ) {
             $this->_init_listen_socket();
             last;
         }
@@ -99,66 +111,80 @@ sub event_loop
         $delta = $time - $last_time;
         $last_time = $time;
 
-        foreach $peer ( values(%{$this->{_peer_list}}) ) {
-            $peer->_handle_pending_events();
+        foreach my $peer ( values(%{$this->{_peer_list}}) ) {
+
+	    foreach my $trans ($peer->transports) {
+              $trans->_handle_pending_events();
+            }
 
             $min = $peer->_update_timers($delta);
             if ( $min < $min_timer ) {
                 $min_timer = $min;
             }
 
-            $this->_update_select($peer);
+	    foreach my $trans ($peer->transports)
+             {
+              $this->_update_select($trans);
+             };
         }
 
-        @ready = IO::Select->select($this->{_read_fh}, $this->{_write_fh}, $this->{_error_fh}, $min_timer);
+        last if scalar(keys(%{$this->{_peer_list}})) == 0;
+
+	$! = 0;
+
+        my @ready = IO::Select->select($this->{_read_fh}, $this->{_write_fh}, $this->{_error_fh}, $min_timer);
+
         if ( @ready ) {
 
             # dispatch ready to reads
-            foreach $ready ( @{$ready[0]} ) {
+            foreach my $ready ( @{$ready[0]} ) {
                 if ( $ready == $this->{_listen_socket} ) {
                     $this->_handle_accept();
                 }
                 else {
-                    $peer = $this->{_peer_sock_map}->{$ready};
-                    $peer->_handle_socket_read_ready();
+                    my $trans = $this->{_trans_sock_map}->{$ready};
+                    $trans->_handle_socket_read_ready();
                 }
             }
 
             # dispatch ready to writes
-            foreach $ready ( @{$ready[1]} ) {
-                $peer = $this->{_peer_sock_map}->{$ready};
-                $peer->_handle_socket_write_ready();
+            foreach my $ready ( @{$ready[1]} ) {
+                my $trans = $this->{_trans_sock_map}->{$ready};
+                $trans->_handle_socket_write_ready();
             }
 
             # dispatch exception conditions
-            foreach $ready ( @{$ready[2]} ) {
-                $peer = $this->{_peer_sock_map}->{$ready};
-                $peer->_handle_socket_error_condition();
+            foreach my $ready ( @{$ready[2]} ) {
+                my $trans = $this->{_trans_sock_map}->{$ready};
+                $trans->_handle_socket_error_condition();
             }
         }
     }
 
     $this->_cleanup();
+
+    delete $SIG{'PIPE'};
+    $SIG{'PIPE'} = $sigorig if defined $sigorig;
 }
 
 ## Private Methods ##
 
-sub _add_peer_sock
+sub _add_trans_sock
 {
-    my ($this, $peer, $sock) = @_;
+    my ($this, $trans, $sock) = @_;
 
-    $this->{_peer_sock}->{$peer} = $sock;
-    $this->{_peer_sock_fh}->{$peer} = $sock->fileno();
-    $this->{_peer_sock_map}->{$sock} = $peer;
+    $this->{_trans_sock}->{$trans} = $sock;
+    $this->{_trans_sock_fh}->{$trans} = $sock->fileno();
+    $this->{_trans_sock_map}->{$sock} = $trans;
 }
 
-sub _remove_peer_sock
+sub _remove_trans_sock
 {
-    my ($this, $peer) = @_;
+    my ($this, $trans) = @_;
 
-    delete $this->{_peer_sock_map}->{$this->{_peer_sock}->{$peer}};
-    delete $this->{_peer_sock}->{$peer};
-    delete $this->{_peer_sock_fh}->{$peer};
+    delete $this->{_trans_sock_map}->{$this->{_trans_sock}->{$trans}};
+    delete $this->{_trans_sock}->{$trans};
+    delete $this->{_trans_sock_fh}->{$trans};
 }
 
 sub _init_listen_socket
@@ -183,13 +209,13 @@ sub _init_listen_socket
             die("socket() failed");
         }
 
+        $socket->sockopt(SO_REUSEADDR, TRUE);
+
         $sock_addr = sockaddr_in($this->{_listen_port}, INADDR_ANY);
         $rv = $socket->bind($sock_addr);
         if ( ! defined($rv) ) {
             die("bind() failed");
         }
-
-        $socket->sockopt(SO_REUSEADDR, TRUE);
 
         $rv = $socket->listen(LISTEN_QUEUE_SIZE);
         if ( ! defined($rv) ) {
@@ -201,6 +227,7 @@ sub _init_listen_socket
         $this->{_error_fh}->add($socket);
         $this->{_listen_socket} = $socket;
     };
+  croak $@ if $@;
 }
 
 sub _cleanup
@@ -221,56 +248,54 @@ sub _cleanup
 
 sub _handle_accept
 {
-    my $this = shift();
-    my ($socket, $peer, $peer_addr);
-    my ($port, $addr, $ip_addr);
+    my $this = shift;
 
-    ($socket, $peer_addr) = $this->{_listen_socket}->accept();
-    ($port, $addr) = sockaddr_in($peer_addr);
-    $ip_addr = inet_ntoa($addr);
+    my ($socket, $peer_addr) = $this->{_listen_socket}->accept();
+    my ($port, $addr) = sockaddr_in($peer_addr);
+    
+    my $ip_addr = inet_ntoa($addr);
+    my $ip_local = inet_ntoa($socket->sockaddr);
 
-    if ( ! defined($this->{_peer_addr}->{$ip_addr}) ) {
+    my $peer = $this->{_peer_addr}->{$ip_local}->{$ip_addr};
+    if ( ! defined($peer)) {
+	warn "Ignored incoming connection from unknown peer\n";
         $socket->close();
     }
-    elsif ( ! $this->{_peer_addr}->{$ip_addr}->_is_listener() ) {
+    elsif ( ! $peer->is_listener() ) {
+	warn "Ignored incoming connection for non-listning peer\n";
         $socket->close();
     }
     else {
-        # reuse the existing Net::BGP::Peer object if it is a passive session
-        if ( $this->{_peer_addr}->{$ip_addr}->_is_passive() ) {
-            $peer = $this->{_peer_addr}->{$ip_addr};
-        }
-        else {
-            $peer = $this->{_peer_addr}->{$ip_addr}->_clone();
-            $this->add_peer($peer);
-        }
+        my $trans = $peer->transport;
 
-        $peer->_set_socket($socket);
+        # Can't reuse the existing Net::BGP::Peer object unless it is a passive session
+	$trans = $trans->_clone unless $peer->is_passive();
+
+        $trans->_set_socket($socket);
     }
 }
 
 sub _update_select
 {
-    my ($this, $peer) = @_;
-    my ($peer_socket, $this_socket);
+    my ($this, $trans) = @_;
 
-    $peer_socket = $peer->_get_socket();
-    $this_socket = $this->{_peer_sock}->{$peer};
+    my $trans_socket = $trans->_get_socket();
+    my $this_socket = $this->{_trans_sock}->{$trans};
 
-    if ( defined($peer_socket) && ! defined($this_socket) ) {
-        $this->_add_peer_sock($peer, $peer_socket);
-        $this->{_read_fh}->add($peer_socket);
-        $this->{_write_fh}->add($peer_socket);
-        $this->{_error_fh}->add($peer_socket);
+    if ( defined($trans_socket) && ! defined($this_socket) ) {
+        $this->_add_trans_sock($trans, $trans_socket);
+        $this->{_read_fh}->add($trans_socket);
+        $this->{_write_fh}->add($trans_socket);
+        $this->{_error_fh}->add($trans_socket);
     }
-    elsif ( defined($this_socket) && ! defined($peer_socket) ) {
-        $this->{_read_fh}->remove($this->{_peer_sock_fh}->{$peer});
-        $this->{_write_fh}->remove($this->{_peer_sock_fh}->{$peer});
-        $this->{_error_fh}->remove($this->{_peer_sock_fh}->{$peer});
-        $this->_remove_peer_sock($peer);
+    elsif ( defined($this_socket) && ! defined($trans_socket) ) {
+        $this->{_read_fh}->remove($this->{_trans_sock_fh}->{$trans});
+        $this->{_write_fh}->remove($this->{_trans_sock_fh}->{$trans});
+        $this->{_error_fh}->remove($this->{_trans_sock_fh}->{$trans});
+        $this->_remove_trans_sock($trans);
     }
-    elsif ( defined($this_socket) && defined($peer_socket) ) {
-        if ( $this_socket->connected() && $this->{_write_fh}->exists($this_socket) ) {
+    elsif ( defined($this_socket) && defined($trans_socket) ) {
+        if ( $trans->_is_connected() && $this->{_write_fh}->exists($this_socket) ) {
             $this->{_write_fh}->remove($this_socket);
         }
     }
@@ -340,8 +365,8 @@ I<remove_peer()> - remove a peer from the BGP process
 This method should be called if a peer should no longer be managed by the
 BGP process, for example, if the session is broken or closed and will not
 be re-established. The method accepts a single parameter, which is a
-reference to a B<Net::BGP::Peer> object which has previously been registered
-with the process object with the I<add_peer()> method.
+reference to a Net::BGP::Peer object which has previously been registered
+with the process object with the add_peer() method.
 
 I<event_loop()> - start the process event loop
 
@@ -352,17 +377,16 @@ BGP process and any other necessary initialization has occured. Once it
 is called, it takes over program control flow, and control will
 only return to user code when one of the event callback functions is
 invoked upon receipt of a BGP protocol message or a user
-established timer expires (see the B<Net::BGP::Peer> manpage for details
+established timer expires (see L<Net::BGP::Peer> for details
 on how to establish timers and callback functions). The method takes
-no parameters. It will only return when there are no B<Net::BGP::Peer>
+no parameters. It will only return when there are no Net::BGP::Peer
 objects remaining under its management, which can only occur if they
-are explicitly removed with the I<remove_peer()> method (perhaps called
+are explicitly removed with the remove_peer() method (perhaps called
 in one of the callback or timer functions).
 
 =head1 SEE ALSO
 
-B<Net::BGP>, B<Net::BGP::Peer>, B<Net::BGP::Update>,
-B<Net::BGP::Notification>
+Net::BGP, Net::BGP::Peer, Net::BGP::Update, Net::BGP::Notification
 
 =head1 AUTHOR
 

@@ -1,3 +1,7 @@
+#!/usr/bin/perl
+
+# $Id: BGP.pm,v 1.3 2003/05/28 22:04:42 unimlo Exp $
+
 package Net::BGP;
 
 use strict;
@@ -5,7 +9,7 @@ use vars qw( $VERSION );
 
 ## Inheritance and Versioning ##
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 ## End Code Section ##
 

@@ -1,18 +1,25 @@
+#!/usr/bin/perl
+
+# $Id: Update.pm,v 1.5 2003/06/02 12:15:40 unimlo Exp $
+
 package Net::BGP::Update;
 
 use strict;
 use vars qw(
-    $VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS @ORIGIN
-    @BGP_PATH_ATTR_COUNTS @BGP_PATH_ATTR_FLAGS
+    $VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
+    @BGP_PATH_ATTR_FLAGS
 );
 
 ## Inheritance and Versioning ##
 
-@ISA     = qw( Exporter );
-$VERSION = '0.03';
+use Net::BGP::NLRI qw( :origin );
+
+@ISA     = qw( Exporter Net::BGP::NLRI );
+$VERSION = '0.04';
 
 ## Module Imports ##
 
+use Carp;
 use IO::Socket;
 use Net::BGP::Notification qw( :errors );
 
@@ -32,15 +39,6 @@ sub BGP_PATH_ATTR_ATOMIC_AGGREGATE { 6 }
 sub BGP_PATH_ATTR_AGGREGATOR       { 7 }
 sub BGP_PATH_ATTR_COMMUNITIES      { 8 }
 
-## BGP AS_PATH Path Attribute Type Enumerations ##
-
-sub BGP_PATH_ATTR_AS_SET      { 1 }
-sub BGP_PATH_ATTR_AS_SEQUENCE { 2 }
-
-## BGP Path Attribute Count Vector ##
-
-@BGP_PATH_ATTR_COUNTS = ( 0, 0, 0, 0, 0, 0, 0, 0, 0 );
-
 ## BGP Path Attribute Flag Octets ##
 
 @BGP_PATH_ATTR_FLAGS = (
@@ -55,19 +53,11 @@ sub BGP_PATH_ATTR_AS_SEQUENCE { 2 }
     0xC0
 );
 
-## BGP ORIGIN Path Attribute Type Enumerations ##
-
-sub IGP        { 0 }
-sub EGP        { 1 }
-sub INCOMPLETE { 2 }
-
 ## Export Tag Definitions ##
 
-@ORIGIN      = qw( IGP EGP INCOMPLETE );
 @EXPORT      = ();
-@EXPORT_OK   = ( @ORIGIN );
+@EXPORT_OK   = ();
 %EXPORT_TAGS = (
-    origin => [ @ORIGIN ],
     ALL    => [ @EXPORT, @EXPORT_OK ]
 );
 
@@ -75,122 +65,62 @@ sub INCOMPLETE { 2 }
 
 sub new
 {
-    my $class = shift();
+    my $proto = shift;
+    my $class = ref $proto || $proto;
+
+    if (ref $_[0] eq 'Net::BGP::NLRI')
+     { # Construct from NLRI
+       $proto = shift unless ref $proto;
+       my $this = $proto->clone;
+       bless($this,$class);
+       $this->nlri(shift);
+       $this->withdrawn(shift);
+       return $this;
+     };
+
     my ($arg, $value);
-
-    my $this = {
-        _withdrawn    => [],
-        _as_path      => [],
-        _as_path_type => BGP_PATH_ATTR_AS_SEQUENCE,
-        _origin       => IGP,
-        _next_hop     => undef,
-        _med          => undef,
-        _local_pref   => undef,
-        _atomic_agg   => undef,
-        _aggregator   => [],
-        _communities  => [],
-        _nlri         => [],
-        _attr_mask    => [ @BGP_PATH_ATTR_COUNTS ]
-    };
-
-    bless($this, $class);
+    my @super_arg;
+    my %this_arg;
+    $this_arg{_withdrawn} = [];
+    $this_arg{_nlri} = [];
 
     while ( defined($arg = shift()) ) {
         $value = shift();
 
-        if ( $arg =~ /aspath/i ) {
-            $this->{_as_path} = $value;
-            $this->{_as_path_type} = BGP_PATH_ATTR_AS_SEQUENCE;
-        }
-        elsif ( $arg =~ /nlri/i ) {
-            $this->{_nlri} = $value;
+        if ( $arg =~ /nlri/i ) {
+            $this_arg{_nlri} = $value;
         }
         elsif ( $arg =~ /withdraw/i ) {
-            $this->{_withdrawn} = $value;
-        }
-        elsif ( $arg =~ /origin/i ) {
-            $this->{_origin} = $value;
-        }
-        elsif ( $arg =~ /nexthop/i ) {
-            $this->{_next_hop} = $value;
-        }
-        elsif ( $arg =~ /med/i ) {
-            $this->{_med} = $value;
-        }
-        elsif ( $arg =~ /localpref/i ) {
-            $this->{_local_pref} = $value;
-        }
-        elsif ( $arg =~ /atomicaggregate/i ) {
-            $this->{_atomic_agg} = 0;
-        }
-        elsif ( $arg =~ /aggregator/i ) {
-            $this->{_aggregator} = $value;
-        }
-        elsif ( $arg =~ /communities/i ) {
-            $this->{_communities} = $value;
+            $this_arg{_withdrawn} = $value;
         }
         else {
-            die("unrecognized argument $arg\n");
+            push(@super_arg,$arg,$value);
         }
     }
+
+    my $this = $class->SUPER::new(@super_arg);
+
+    @{$this}{keys %this_arg} = values(%this_arg);
+
+    bless($this, $class);
 
     return ( $this );
 }
 
-sub aggregator
+sub clone
 {
-    my $this = shift();
+    my $proto = shift;
+    my $class = ref $proto || $proto;
+    $proto = shift unless ref $proto;
 
-    $this->{_aggregator} = @_ ? shift() : $this->{_aggregator};
-    return ( $this->{_aggregator} );
-}
+    my $clone = $class->SUPER::clone($proto);
 
-sub as_path
-{
-    my $this = shift();
+    foreach my $key (qw(_nlri _withdrawn ))
+     {
+      $clone->{$key} = [ @{$proto->{$key}} ];
+     }
 
-    $this->{_as_path} = @_ ? shift() : $this->{_as_path};
-    return ( $this->{_as_path} );
-}
-
-sub atomic_aggregate
-{
-    my $this = shift();
-
-    $this->{_atomic_agg} = @_ ? shift() : $this->{_atomic_agg};
-    return ( $this->{_atomic_agg} );
-}
-
-sub communities
-{
-    my $this = shift();
-
-    $this->{_communities} = @_ ? shift() : $this->{_communities};
-    return ( $this->{_communities} );
-}
-
-sub local_pref
-{
-    my $this = shift();
-
-    $this->{_local_pref} = @_ ? shift() : $this->{_local_pref};
-    return ( $this->{_local_pref} );
-}
-
-sub med
-{
-    my $this = shift();
-
-    $this->{_med} = @_ ? shift() : $this->{_med};
-    return ( $this->{_med} );
-}
-
-sub next_hop
-{
-    my $this = shift();
-
-    $this->{_next_hop} = @_ ? shift() : $this->{_next_hop};
-    return ( $this->{_next_hop} );
+    return ( bless($clone, $class) );
 }
 
 sub nlri
@@ -201,14 +131,6 @@ sub nlri
     return ( $this->{_nlri} );
 }
 
-sub origin
-{
-    my $this = shift();
-
-    $this->{_origin} = @_ ? shift() : $this->{_origin};
-    return ( $this->{_origin} );
-}
-
 sub withdrawn
 {
     my $this = shift();
@@ -217,17 +139,25 @@ sub withdrawn
     return ( $this->{_withdrawn} );
 }
 
-sub clone
+sub ashash
 {
     my $this = shift();
-    my ($key, $clone);
 
-    $clone = {};
-    foreach $key ( keys(%{$this}) ) {
-        $clone->{$key} = $this->{$key};
-    }
+    my (%res,$nlri);
 
-    return ( bless($clone, ref($this)) );
+    $nlri = clone Net::BGP::NLRI($this) if defined($this->{_nlri});
+
+    foreach my $prefix (@{$this->{_nlri}})
+     {
+      $res{$prefix} = $nlri;
+     };
+
+    foreach my $prefix (@{$this->withdrawn})
+     {
+      $res{$prefix} = undef;
+     };
+
+    return \%res;
 }
 
 ## Private Methods ##
@@ -237,22 +167,8 @@ sub _new_from_msg
     my ($class, $buffer) = @_;
     my $error;
 
-    my $this = {
-        _withdrawn    => [],
-        _as_path      => [],
-        _as_path_type => undef,
-        _origin       => undef,
-        _next_hop     => undef,
-        _med          => undef,
-        _local_pref   => undef,
-        _atomic_agg   => undef,
-        _aggregator   => [],
-        _communities  => [],
-        _nlri         => [],
-        _attr_mask    => [ @BGP_PATH_ATTR_COUNTS ]
-    };
+    my $this = $class->new();
 
-    bless($this, $class);
     $error = $this->_decode_message($buffer);
 
     return ( defined($error) ? $error : $this );
@@ -327,36 +243,16 @@ sub _decode_origin
 sub _decode_as_path
 {
     my ($this, $buffer) = @_;
-    my ($offset, $ii, $as_count, @as_path);
-    my $error;
 
-    if ( length($buffer) == 0 ) {
-        return ( undef );
-    }
+    my $path = Net::BGP::ASPath->_new_from_msg($buffer);
 
-    $offset = 0;
-    $this->{_as_path_type} = unpack('C', substr($buffer, $offset++, 1));
-    $as_count = unpack('C', substr($buffer, $offset++, 1));
+    return new Net::BGP::Notification(
+	ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
+	ErrorSubCode => BGP_ERROR_SUBCODE_BAD_AS_PATH
+	) unless defined $path;
 
-    if ( length($buffer) != (($as_count + 1) * 2) ) {
-        $error = new Net::BGP::Notification(
-            ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
-            ErrorSubCode => BGP_ERROR_SUBCODE_BAD_AS_PATH
-        );
+    $this->{_as_path} = $path;
 
-        return ( $error );
-    }
-
-    for ( $ii = 0; $ii < $as_count; $ii++ ) {
-        push(@as_path, unpack('n', substr($buffer, $offset, 2)));
-        $offset += 2;
-    }
-
-    if ( $this->{_as_path_type} == BGP_PATH_ATTR_AS_SET ) {
-        @as_path = sort { $a <=> $b } @as_path;
-    }
-
-    $this->{_as_path} = [ @as_path ];
     $this->{_attr_mask}->[BGP_PATH_ATTR_AS_PATH] ++;
 
     return ( undef );
@@ -616,6 +512,7 @@ sub _decode_prefix_list
             return ( FALSE );
         }
 
+        $prefix = 0;
         for ( $ii = 0; $ii < $prefix_bytes; $ii++ ) {
             $prefix |= (unpack('C', substr($buffer, $offset++, 1)) << (24 - ($ii * 8)));
         }
@@ -744,24 +641,14 @@ sub _encode_origin
 sub _encode_as_path
 {
     my $this = shift();
-    my ($buffer, $as_buffer, $as, @as_path);
 
-    @as_path = @{$this->{_as_path}};
-    if ( $this->{_as_path_type} == BGP_PATH_ATTR_AS_SET ) {
-        @as_path = sort { $a <=> $b } @as_path;
-    }
+    my $as_buffer = $this->{_as_path}->_encode;
 
-    $as_buffer  = pack('C', $this->{_as_path_type});
-    $as_buffer .= pack('C', scalar(@as_path));
-    foreach $as ( @as_path ) {
-        $as_buffer .= pack('n', $as);
-    }
-
-    $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_AS_PATH);
+    my $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_AS_PATH);
     $buffer .= pack('C', length($as_buffer));
     $buffer .= $as_buffer;
 
-    return ( $buffer );
+    return $buffer;
 }
 
 sub _encode_next_hop
@@ -852,25 +739,26 @@ sub _encode_path_attributes
     $buffer = '';
 
     # do not encode path attributes if no NLRI is present
-    if ( scalar(@{$this->{_nlri}}) == 0 ) {
+    unless ((defined $this->{_nlri})
+	 && scalar(@{$this->{_nlri}})) {
         return ( $buffer );
     }
 
     # encode the ORIGIN path attribute
     if ( ! defined($this->{_origin}) ) {
-        warn("mandatory path attribute ORIGIN not defined\n");
+        carp "mandatory path attribute ORIGIN not defined\n";
     }
     $buffer = $this->_encode_origin();
 
     # encode the AS_PATH path attribute
     if ( ! defined($this->{_as_path}) ) {
-        warn("mandatory path attribute AS_PATH not defined\n");
+        carp "mandatory path attribute AS_PATH not defined\n";
     }
     $buffer .= $this->_encode_as_path();
 
     # encode the NEXT_HOP path attribute
     if ( ! defined($this->{_next_hop}) ) {
-        warn("mandatory path attribute NEXT_HOP not defined\n");
+        carp "mandatory path attribute NEXT_HOP not defined\n";
     }
     $buffer .= $this->_encode_next_hop();
 
@@ -916,32 +804,34 @@ Net::BGP::Update - Class encapsulating BGP-4 UPDATE message
 
     # Constructor
     $update = new Net::BGP::Update(
+        NLRI            => [ qw( 10/8 172.168/16 ) ],
+        Withdraw        => [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ],
+	# For Net::BGP::NLRI
         Aggregator      => [ 64512, '10.0.0.1' ],
         AsPath          => [ 64512, 64513, 64514 ],
         AtomicAggregate => 1,
         Communities     => [ qw( 64512:10000 64512:10001 ) ],
         LocalPref       => 100,
         MED             => 200,
-        NLRI            => [ qw( 10/8 172.168/16 ) ],
         NextHop         => '10.0.0.1',
         Origin          => INCOMPLETE,
-        Withdraw        => [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ]
     );
+
+    # Construction from a NLRI object:
+    $nlri = new Net::BGP::NLRI( ... );
+    $update = new Net::BGP::Update($nlri,$nlri_ref,$withdrawn_ref);
 
     # Object Copy
     $clone = $update->clone();
 
     # Accessor Methods
-    $aggregator_ref   = $update->aggregator($aggregator_ref);
-    $as_path_ref      = $update->as_path($as_path_ref);
-    $atomic_aggregate = $update->atomic_aggregate($atomic_aggregate);
-    $communities_ref  = $update->communities($communities_ref);
-    $local_pref       = $update->local_pref($local_pref);
-    $med              = $update->med($med);
-    $next_hop         = $update->next_hop($next_hop);
     $nlri_ref         = $update->nlri($nlri_ref);
-    $origin           = $update->origin($origin);
     $withdrawn_ref    = $update->withdrawn($withdrawn_ref);
+    $prefix_hash_ref  = $update->ashash;
+
+    # Comparison
+    if ($update1 eq $update2) { ... }
+    if ($update1 ne $update2) { ... }
 
 =head1 DESCRIPTION
 
@@ -960,16 +850,17 @@ the UPDATE message fields by means of the accessor methods.
 I<new()> - create a new Net::BGP::Update object
 
     $update = new Net::BGP::Update(
+        NLRI            => [ qw( 10/8 172.168/16 ) ],
+        Withdraw        => [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ],
+	# For Net::BGP::NLRI
         Aggregator      => [ 64512, '10.0.0.1' ],
         AsPath          => [ 64512, 64513, 64514 ],
         AtomicAggregate => 1,
         Communities     => [ qw( 64512:10000 64512:10001 ) ],
         LocalPref       => 100,
         MED             => 200,
-        NLRI            => [ qw( 10/8 172.168/16 ) ],
         NextHop         => '10.0.0.1',
         Origin          => INCOMPLETE,
-        Withdraw        => [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ]
     );
 
 This is the constructor for Net::BGP::Update objects. It returns a
@@ -977,51 +868,14 @@ reference to the newly created object. The following named parameters may
 be passed to the constructor. See RFC 1771 for the semantics of each
 path attribute.
 
-=head2 Aggregator
+An alternative is to construct an object from a Net::BGP::NLRI object:
 
-This parameter corresponds to the AGGREGATOR path attribute. It is expressed
-as an array reference, the first element of which is the AS number (in the
-range of an 16-bit unsigned integer) of the route aggregator, and the second
-element is the aggregator's IP address expressed in dotted-decimal notation
-as a string. It may be omitted, in which case no AGGREGATOR path attribute
-will be attached to the UPDATE message.
+    $nlri = new Net::BGP::NLRI( ... );
+    $nlri_ref = [ qw( 10/8 172.168/16 ) ];
+    $withdrawn_ref = [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ];
+    $update = new Net::BGP::Update($nlri,$nlri_ref,$withdrawn_ref);
 
-=head2 AsPath
-
-This parameter corresponds to the AS_PATH path attribute. It is expressed
-as an array reference of AS path numbers, each in the range of a 16-bit
-unsigned integer. This path attribute is mandatory and this parameter
-must always be provided to the constructor.
-
-=head2 AtomicAggregate
-
-This parameter corresponds to the ATOMIC_AGGREGATE path attribute. It is
-a boolean value so any value which perl interprets as true/false may be
-used. It may be omitted, in which case no ATOMIC_AGGREGATE path attribute
-will be attached to the UPDATE message.
-
-=head2 Communities
-
-This parameter corresponds to the COMMUNITIES attribute defined in RFC 1997.
-It is expressed as an array reference of communities which apply to the
-route(s). The communities are encoded in a special format: AAAA:CCCC, where
-AAAA corresponds to the 16-bit unsigned integer AS number, and CCCC is
-a 16-bit unsigned integer of arbitrary value. But see RFC 1997 for the
-semantics of several reserved community values. This attribute may be
-omitted, in which case no COMMUNITIES attribute will be attached to the
-UPDATE message.
-
-=head2 LocalPref
-
-This parameter corresponds to the LOCAL_PREF path attribute. It is expressed
-as a 32-bit unsigned integer scalar value. It may be omitted, in which case
-no LOCAL_PREF path attribute will be attached to the UPDATE message.
-
-=head2 MED
-
-This parameter corresponds to the MULTI_EXIT_DISC path attribute. It is expressed
-as a 32-bit unsigned integer scalar value. It may be omitted, in which case
-no MULTI_EXIT_DISC path attribute will be attached to the UPDATE message.
+The NLRI object will not be modified in any way.
 
 =head2 NLRI
 
@@ -1034,20 +888,6 @@ as are significant according to the mask need to be specified. The part followin
 the slash is the mask which is an integer in the range [0,32] which indicates how
 many bits are significant in the prefix. At least one of either the NLRI or Withdraw
 parameters is mandatory and must always be provided to the constructor.
-
-=head2 NextHop
-
-This parameter corresponds to the NEXT_HOP path attribute. It is expressed as a
-dotted-decimal IP address as a perl string. This path attribute is mandatory and
-the parameter must always be provided to the constructor.
-
-=head2 Origin
-
-This parameter corresponds to the ORIGIN path attribute. It is expressed as an
-integer scalar value, which can take the following enumerated values: IGP, EGP,
-or INCOMPLETE. The preceding symbols can be imported into the program namespace
-individually or by the :origin export tag. This path attribute is mandatory and
-the parameter must always be provided to the constructor.
 
 =head2 Withdraw
 
@@ -1070,43 +910,30 @@ needs to remain unchanged.
 
 =head1 ACCESSOR METHODS
 
-I<aggregator()>
-
-I<as_path()>
-
-I<atomic_aggregate()>
-
-I<communities()>
-
-I<local_pref()>
-
-I<med()>
-
-I<next_hop()>
-
 I<nlri()>
-
-I<origin()>
 
 I<withdrawn()>
 
 These accessor methods return the value(s) of the associated UPDATE message field
-or path attribute if called with no arguments. If called with arguments, they set
+if called with no arguments. If called with arguments, they set
 the associated field. The representation of parameters and return values is the
 same as described for the corresponding named constructor parameters above.
 
+I<ashash()>
+
+This method returns a hash reference index on the prefixes in found in the nlri
+and withdrawn fields.  Withdrawn networks has undefined as value, while nlri
+prefixes all has the same reference to a Net::BGP::NLRI object matching the
+Update object self. 
+
 =head1 EXPORTS
 
-The module exports the following symbols according to the rules and
-conventions of the B<Exporter> module.
-
-:origin
-    IGP, EGP, INCOMPLETE
+The module does not export anything.
 
 =head1 SEE ALSO
 
 B<RFC 1771>, B<RFC 1997>, B<Net::BGP>, B<Net::BGP::Process>, B<Net::BGP::Peer>,
-B<Net::BGP::Notification>
+B<Net::BGP::Notification>, B<Net::BGP::NLRI>
 
 =head1 AUTHOR
 

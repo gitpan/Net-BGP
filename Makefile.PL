@@ -6,5 +6,10 @@ WriteMakefile(
     'ABSTRACT'		=> 'Object-oriented API to the BGP protocol',
     'AUTHOR'		=> 'Stephen J. Scheck <code@neurosphere.com>',
     'VERSION_FROM'	=> 'lib/Net/BGP.pm', # finds $VERSION
-    'PREREQ_PM'		=> {}, # e.g., Module::Name => 1.1
+    'PREREQ_PM'		=> {
+                                'List::Util'    => 1.01, # Actully Scalar::Util - but no version there!
+                                'Test::Harness' => '2.00', # ?
+                                'Test::More'    => '0.47'
+
+	}
 );
