@@ -1,4 +1,16 @@
-use Test::More tests => 1;
-use Test::Signature;
+use Test::More;
+use strict;
 
-signature_ok();
+eval "use Test::Signature";
+
+if ($@) {
+        plan skip_all => "Test::Signature required for testing SIGNATURE";
+} else {
+        Test::Signature->import;
+        
+        plan tests => 1;
+
+        signature_ok();
+
+}
+

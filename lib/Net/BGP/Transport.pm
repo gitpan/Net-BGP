@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Transport.pm,v 1.25 2003/10/27 23:57:55 unimlo Exp $
+# $Id: Transport.pm,v 1.26 2003/10/28 09:06:59 unimlo Exp $
 
 package Net::BGP::Transport;
 
@@ -14,7 +14,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.06';
+$VERSION = '0.07';
 
 ## General Definitions ##
 

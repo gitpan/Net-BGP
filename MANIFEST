@@ -7,7 +7,6 @@ lib/Net/BGP/Peer.pm
 lib/Net/BGP/Process.pm
 lib/Net/BGP/Refresh.pm
 lib/Net/BGP/Transport.pm
-lib/Net/BGP/Transport.pm.orig
 lib/Net/BGP/Update.pm
 Makefile.PL
 MANIFEST

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Refresh.pm,v 1.5 2003/10/27 23:57:55 unimlo Exp $
+# $Id: Refresh.pm,v 1.6 2003/10/28 09:06:59 unimlo Exp $
 
 package Net::BGP::Refresh;
 
@@ -10,7 +10,7 @@ use vars qw( $VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS @AFI @SAFI );
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.06';
+$VERSION = '0.07';
 
 ## Module Imports ##
 
