@@ -1,4 +1,4 @@
-Net::BGP version 0.04
+Net::BGP version 0.05
 =====================
 
 This module is an implementation of the BGP-4 inter-domain

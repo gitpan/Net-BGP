@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Process.pm,v 1.17 2003/06/29 23:23:19 unimlo Exp $
+# $Id: Process.pm,v 1.19 2003/10/27 23:57:55 unimlo Exp $
 
 package Net::BGP::Process;
 
@@ -9,7 +9,7 @@ use vars qw( $VERSION );
 
 ## Inheritance and Versioning ##
 
-$VERSION = '0.05';
+$VERSION = '0.06';
 
 ## Module Imports ##
 

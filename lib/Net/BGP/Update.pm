@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Update.pm,v 1.5 2003/06/02 12:15:40 unimlo Exp $
+# $Id: Update.pm,v 1.7 2003/10/27 23:57:55 unimlo Exp $
 
 package Net::BGP::Update;
 
@@ -15,7 +15,7 @@ use vars qw(
 use Net::BGP::NLRI qw( :origin );
 
 @ISA     = qw( Exporter Net::BGP::NLRI );
-$VERSION = '0.05';
+$VERSION = '0.06';
 
 ## Module Imports ##
 

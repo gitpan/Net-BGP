@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: BGP.pm,v 1.3 2003/05/28 22:04:42 unimlo Exp $
+# $Id: BGP.pm,v 1.5 2003/10/27 23:57:55 unimlo Exp $
 
 package Net::BGP;
 
@@ -9,7 +9,7 @@ use vars qw( $VERSION );
 
 ## Inheritance and Versioning ##
 
-$VERSION = '0.05';
+$VERSION = '0.06';
 
 ## End Code Section ##
 

@@ -1,6 +1,6 @@
 #!/usr/bin/perl -wT
 
-# $Id: NLRI.t,v 1.2 2003/06/02 11:55:23 unimlo Exp $
+# $Id: 20-NLRI.t,v 1.1 2003/10/27 23:57:14 unimlo Exp $
 
 use strict;
 

@@ -1,11 +1,10 @@
 #!/usr/bin/perl
 
-# $Id: Transport.pm,v 1.25 2003/10/27 23:57:55 unimlo Exp $
+# $Id: Transport.pm,v 1.24 2003/08/16 22:48:29 unimlo Exp $
 
 package Net::BGP::Transport;
 
 use strict;
-use Errno qw(EAGAIN);
 use vars qw(
     $VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS @BGP @GENERIC
     @BGP_EVENT_MESSAGE_MAP @BGP_EVENTS @BGP_FSM @BGP_STATES
@@ -14,7 +13,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.06';
+$VERSION = '0.05';
 
 ## General Definitions ##
 
@@ -583,10 +582,8 @@ sub _send_msg
 
     if ( ! defined($sent) ) {
         return if $oktofail; # In a _cease process - Don't complain...
-	if ($!{EAGAIN} == 0) {
-	    warn $this->parent->asstring . ": Error on socket write: $! - Connection is shutdown\n";
-            $this->_cease;
-	}
+        warn $this->parent->asstring . ": Error on socket write: $! - Connection is shutdown\n";
+        $this->_cease;
         return;
     }
 
@@ -622,7 +619,7 @@ sub _handle_socket_read_ready
         }
         elsif ( $num_read != BGP_MESSAGE_HEADER_LENGTH ) {
             $this->{_in_msg_buf_state} = AWAITING_HEADER_FRAGMENT;
-            $this->{_in_msg_buf_bytes_exp} = (BGP_MESSAGE_HEADER_LENGTH) - ($num_read);
+            $this->{_in_msg_buf_bytes_exp} = BGP_MESSAGE_HEADER_LENGTH - $num_read;
             $this->{_in_msg_buffer} = $buffer;
         }
         else {

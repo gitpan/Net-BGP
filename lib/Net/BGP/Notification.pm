@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Notification.pm,v 1.3 2003/05/28 22:04:44 unimlo Exp $
+# $Id: Notification.pm,v 1.5 2003/10/27 23:57:55 unimlo Exp $
 
 package Net::BGP::Notification;
 
@@ -10,7 +10,7 @@ use vars qw( $VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS @ERRORS );
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.05';
+$VERSION = '0.06';
 
 ## Module Imports ##
 

@@ -1,5 +1,15 @@
 Revision history for Perl extension Net::BGP.
 
+0.06  Thu Oct 28 00:42:45 2003
+
+	- Fixed to buges reported by Robert (rt#4221):
+
+	- Syswrite returns undef handled incorrectly
+
+	- Receieving a partial BGP header failed
+
+	- Added test for pod and signature
+
 0.05  Fri Jul  4 00:36:26 2003
 
 	- Removed the RIB.pm object - Forgot in last version!

@@ -1,5 +1,5 @@
 This file contains message digests of all files listed in MANIFEST,
-signed via the Module::Signature module, version 0.22.
+signed via the Module::Signature module, version 0.35.
 
 To verify the content in this distribution, first make sure you have
 Module::Signature installed, then type:
@@ -14,29 +14,33 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 ad3dc56461210936bc75bde9195b89f16a19cde4 Changes
-SHA1 19e9a3d1208ffb7b62f3efc7b3cdb1e3f280de52 MANIFEST
+SHA1 6a4d80fefe3b2a93c1a1d8cd4b2e973fbd966e05 Changes
+SHA1 e517ba9311b1515111a1ca0e7e35cdfd4a6d033f MANIFEST
+SHA1 12d750866daee3a0cedfae5bc97409f06930fbf3 META.yml
 SHA1 da3b9d6b7881211e0f9edffb42cf5ed6a803518d Makefile.PL
-SHA1 ebb8532b13ce33a3c07492cbdd1da420fd057ca5 README
-SHA1 e1df35be818835218abae15e0807a381bc944acb lib/Net/BGP.pm
-SHA1 08a060241dac8ff2f6b57426fbacc635f7278e80 lib/Net/BGP/ASPath.pm
-SHA1 f1c75e110f57419e670f6d3ab136bbd2d02427e3 lib/Net/BGP/NLRI.pm
-SHA1 12130b4eede6be78b8edfdef64ed9d1b22d1c6f2 lib/Net/BGP/Notification.pm
-SHA1 4e6c332b15b05d9d9491765952ff7966def8e2b0 lib/Net/BGP/Peer.pm
-SHA1 38ed96cc0b29876f62d830bea20d88ddb6d30202 lib/Net/BGP/Process.pm
-SHA1 a62a1011c44b49eee33d044cf94d2068325bdbb3 lib/Net/BGP/Refresh.pm
-SHA1 c5491ae43c11fd3e95f6806a1cb34d33abcd5680 lib/Net/BGP/Transport.pm
-SHA1 30394fd3d298bb7907ccee7dbe51db4c028840d5 lib/Net/BGP/Update.pm
-SHA1 76d9f43640d50910568cf7cba81eed860576838b t/ASPath.t
-SHA1 51767b0c3b988731ccff7e7d792baf6c6c79e486 t/ASPathSegment.t
-SHA1 be87b9c138799c7595d73b1291a6d4ab26bb559d t/BGP.t
-SHA1 a627983641f0465b2100970b7a44d4e1e12e02a2 t/NLRI.t
-SHA1 379088589b734b7eba79b93cbaa5bba8e2d270db t/Refresh.t
-SHA1 28b172e9d7ea874653e0503209f0a27bf5d9a67a t/Update.t
+SHA1 4f71203e5a83fe0c913a9ff280e13bc5651b25b4 README
+SHA1 3f6f3fc9c140d99f6ee6cfc4f28c1dd706162828 lib/Net/BGP.pm
+SHA1 5b49c15feee3cda30caf08c39ecbd8ced2d02ed3 lib/Net/BGP/ASPath.pm
+SHA1 90df4ae65c32563a55603da62e99ac08921c8dad lib/Net/BGP/NLRI.pm
+SHA1 7c169981e2003330b6f57d5578c083ac22690399 lib/Net/BGP/Notification.pm
+SHA1 953563572f5b201b6e6d697bd4bd072e04fdb94c lib/Net/BGP/Peer.pm
+SHA1 813fb7be75ea51d8f8f3232928e06b1133fc4b1d lib/Net/BGP/Process.pm
+SHA1 b7ec93de246fdfb604efb3e155e8240c65b3da78 lib/Net/BGP/Refresh.pm
+SHA1 8903ddada4b79500f4b8d6ab9df740e03067b233 lib/Net/BGP/Transport.pm
+SHA1 cb23d98b08f31fd5c6424549aa3dfe005757018f lib/Net/BGP/Transport.pm.orig
+SHA1 aca58974c9e29a6b6d2a0d501f2488f0eaa8e515 lib/Net/BGP/Update.pm
+SHA1 04e4911e9aa4d1fee94ace393b20d79e1668964f t/00-Signature.t
+SHA1 9d1a3c1c5fcf24f397942a97524f313868a18612 t/01-pod.t
+SHA1 ebb0037f2f052085a13f3214b31f0632bf518d5f t/10-ASPathSegment.t
+SHA1 53bfe177a9111faa975323ba1040a7b8be61471c t/11-ASPath.t
+SHA1 0f1e67534a223dfc62da6bff007624c6760c78b1 t/20-NLRI.t
+SHA1 73bf7a1543975c43dda6675bcc38f88fb015c649 t/30-Update.t
+SHA1 ecdf770ddc706894e386148edadfaa5d7d1cc4c6 t/31-Refresh.t
+SHA1 ed89854fee89848a863e9742e62ed9d7dfa386a3 t/50-BGP.t
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.2.2 (GNU/Linux)
 
-iD8DBQE/BLB0XejZQ7TqiLoRAu3XAJ9/ES9tV2kvQlCzy9Ii/MbP2X0CbQCggLfd
-tU5x/dbXwsq1fi9k3c9BBHw=
-=9NaD
+iD8DBQE/nbG7XejZQ7TqiLoRAsz9AJ9zpcn9FetGqUbB6qskX4wZqV1cKQCfYh+1
+N6pYPGTgTGg2xSx/1+N8Nl4=
+=b1ea
 -----END PGP SIGNATURE-----

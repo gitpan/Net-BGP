@@ -1,6 +1,6 @@
 #!/usr/bin/perl -wT
 
-# $Id: Update.t,v 1.1 2003/05/31 18:59:59 unimlo Exp $
+# $Id: 30-Update.t,v 1.1 2003/10/27 23:57:14 unimlo Exp $
 
 use strict;
 

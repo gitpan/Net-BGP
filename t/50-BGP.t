@@ -1,6 +1,6 @@
 #!/usr/bin/perl -wT
 
-# $Id: BGP.t,v 1.3 2003/06/06 17:43:31 unimlo Exp $
+# $Id: 50-BGP.t,v 1.1 2003/10/27 23:57:14 unimlo Exp $
 
 use strict;
 
