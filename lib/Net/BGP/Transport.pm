@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Transport.pm,v 1.16 2003/06/06 17:43:31 unimlo Exp $
+# $Id: Transport.pm,v 1.22 2003/07/01 16:41:50 unimlo Exp $
 
 package Net::BGP::Transport;
 
@@ -13,7 +13,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 ## General Definitions ##
 
@@ -322,6 +322,11 @@ sub version
     return shift->{_bgp_version};
 }
 
+sub is_established
+{
+    return ( (shift->{_fsm_state} == BGP_STATE_ESTABLISHED) ? 1 : 0 );
+}
+
 sub can_refresh
 {
     return shift->{_peer_refresh};
@@ -563,14 +568,22 @@ sub _send_msg
 {
     my ($this, $msg, $oktofail) = @_;
 
-    confess $this->parent->asstring . ": Internal error - no _peer_socket!" unless defined $this->{_peer_socket};
+
+    unless (defined $this->{_peer_socket}) {
+        return if $oktofail;
+        warn $this->parent->asstring . ": Internal error - no _peer_socket - Connection is shutdown\n";
+        $this->_cease;
+        return;
+    }
 
     my $buffer = $this->{_out_msg_buffer} . $msg;
     my $sent = $this->{_peer_socket}->syswrite($buffer);
 
     if ( ! defined($sent) ) {
         return if $oktofail; # In a _cease process - Don't complain...
-        croak $this->parent->asstring . ": Fatal error on socket write: $!\n";
+        warn $this->parent->asstring . ": Error on socket write: $! - Connection is shutdown\n";
+        $this->_cease;
+        return;
     }
 
     $this->{_out_msg_buffer} = substr($buffer, $sent);
@@ -582,7 +595,11 @@ sub _handle_socket_read_ready
 
     my $socket = $this->{_peer_socket};
 
-    confess $this->parent->asstring . ": Internal error - no _peer_socket!" unless defined $socket;
+    unless (defined $socket) {
+      warn $this->parent->asstring . ": Connection lost - Connection is formaly shutdown now\n";
+      $this->_cease;
+      return;
+    }
 
     my $conn_closed = FALSE;
     my $buffer = $this->{_in_msg_buffer};
@@ -963,10 +980,10 @@ sub _handle_bgp_start_event
                 die "OK - but connect() failed: $!" unless ($! == EINPROGRESS);
             }
 
-            $rv = $socket->blocking(TRUE);
-            if ( ! defined($rv) ) {
-                die("set socket blocking failed");
-            }
+            # $rv = $socket->blocking(TRUE);
+            # if ( ! defined($rv) ) {
+            #     die("set socket blocking failed");
+            # }
         };
 
         # check for exception in transport initiation
@@ -1330,6 +1347,8 @@ I<Net::BGP::Peer=HASH(0x820952c)>.
 =item update()
 
 =item refresh()
+
+=item is_established()
 
 This methods does the actuall I<work> for the methods of the same name in
 Net::BGP::Peer.

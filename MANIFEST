@@ -2,13 +2,13 @@ Changes
 MANIFEST
 Makefile.PL
 README
+SIGNATURE
 lib/Net/BGP.pm
 lib/Net/BGP/ASPath.pm
 lib/Net/BGP/NLRI.pm
 lib/Net/BGP/Notification.pm
 lib/Net/BGP/Peer.pm
 lib/Net/BGP/Process.pm
-lib/Net/BGP/RIB.pm
 lib/Net/BGP/Refresh.pm
 lib/Net/BGP/Transport.pm
 lib/Net/BGP/Update.pm

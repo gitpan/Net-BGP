@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Process.pm,v 1.14 2003/06/06 17:43:31 unimlo Exp $
+# $Id: Process.pm,v 1.17 2003/06/29 23:23:19 unimlo Exp $
 
 package Net::BGP::Process;
 
@@ -9,7 +9,7 @@ use vars qw( $VERSION );
 
 ## Inheritance and Versioning ##
 
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 ## Module Imports ##
 
@@ -258,7 +258,7 @@ sub _handle_accept
 
     my $peer = $this->{_peer_addr}->{$ip_local}->{$ip_addr};
     if ( ! defined($peer)) {
-	warn "Ignored incoming connection from unknown peer\n";
+	warn "Ignored incoming connection from unknown peer ($ip_addr => $ip_local)\n";
         $socket->close();
     }
     elsif ( ! $peer->is_listener() ) {

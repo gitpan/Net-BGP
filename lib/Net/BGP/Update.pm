@@ -15,7 +15,7 @@ use vars qw(
 use Net::BGP::NLRI qw( :origin );
 
 @ISA     = qw( Exporter Net::BGP::NLRI );
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 ## Module Imports ##
 

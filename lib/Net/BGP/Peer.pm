@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Peer.pm,v 1.10 2003/06/06 17:43:31 unimlo Exp $
+# $Id: Peer.pm,v 1.12 2003/06/30 10:57:56 unimlo Exp $
 
 package Net::BGP::Peer;
 
@@ -13,7 +13,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 ## General Definitions ##
 
@@ -294,6 +294,12 @@ sub is_passive
     return ( $this->{_passive} );
 }
 
+sub is_established
+{
+    my $this = shift();
+    return ( $this->transport->is_established );
+}
+
 sub set_open_callback
 {
     my ($this, $callback) = @_;
@@ -520,6 +526,7 @@ Net::BGP::Peer - Class encapsulating BGP-4 peering session state and functionali
 
     $listen  = $peer->is_listener();
     $passive = $peer->is_passive();
+    $estab   = $peer->is_established();
 
     $trans   = $peer->transport($trans);
     @trans   = $peer->transports;
@@ -751,6 +758,11 @@ I<version()>
 These are accessor methods for the corresponding constructor named parameters.
 They retrieve the values set when the object was created, but the values cannot
 be changed after object construction. Hence, they take no arguments.
+
+I<is_established()>
+
+This accessor method returns true if the peer has a established transport
+connection - e.g. the peering is up.
 
 I<peer_can_refresh()>
 

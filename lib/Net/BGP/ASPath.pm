@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: ASPath.pm,v 1.4 2003/06/06 17:43:31 unimlo Exp $
+# $Id: ASPath.pm,v 1.5 2003/06/09 11:11:01 unimlo Exp $
 
 package Net::BGP::ASPath::AS;
 
@@ -17,7 +17,7 @@ use overload
 	'fallback' => 1;
 	# DO NOT OVERLOAD @{} - it's an array - we need this!
 
-$VERSION = 0.04;
+$VERSION = 0.05;
 
 @Net::BGP::ASPath::AS_SEQUENCE::ISA     = qw( Exporter );
 
@@ -296,7 +296,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 ## Module Imports ##
 
@@ -631,7 +631,7 @@ sub length
 
 =head1 NAME
 
-Net::BGP::ASPath - Class encapsulating a BGP-4 AS_PATH
+Net::BGP::ASPath - Class encapsulating BGP-4 AS Path information
 
 =head1 SYNOPSIS
 
