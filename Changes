@@ -1,5 +1,9 @@
 Revision history for Perl extension Net::BGP.
 
+0.02  Sun Jan 26 16:32:15 2003
+	- Fixed symbolic method call syntax in _handle_event()
+		which is not recognized prior to perl 5.6.0.
+
 0.01  Fri Sep  6 16:09:32 2002
 	- original version; created by h2xs 1.21 with options
 		-A -X -n Net::BGP

@@ -9,7 +9,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 ## Module Imports ##
 
@@ -107,73 +107,73 @@ sub BGP_MESSAGE_KEEPALIVE    { 4 }
     undef,                                     # Null (zero placeholder)
 
     [                                          # Idle
-        '_close_session',                      # Default transition
-        '_handle_bgp_start_event'              # BGP_EVENT_START
+        \&_close_session,                      # Default transition
+        \&_handle_bgp_start_event              # BGP_EVENT_START
     ],
     [                                          # Connect
-        '_close_session',                      # Default transition
-        '_ignore_start_event',                 # BGP_EVENT_START
+        \&_close_session,                      # Default transition
+        \&_ignore_start_event,                 # BGP_EVENT_START
         undef,                                 # BGP_EVENT_STOP
-        '_handle_bgp_conn_open',               # BGP_EVENT_TRANSPORT_CONN_OPEN
+        \&_handle_bgp_conn_open,               # BGP_EVENT_TRANSPORT_CONN_OPEN
         undef,                                 # BGP_EVENT_TRANSPORT_CONN_CLOSED
-        '_handle_connect_retry_restart',       # BGP_EVENT_TRANSPORT_CONN_OPEN_FAILED
+        \&_handle_connect_retry_restart,       # BGP_EVENT_TRANSPORT_CONN_OPEN_FAILED
         undef,                                 # BGP_EVENT_TRANSPORT_FATAL_ERROR
-        '_handle_bgp_start_event'              # BGP_EVENT_CONNECT_RETRY_TIMER_EXPIRED
+        \&_handle_bgp_start_event              # BGP_EVENT_CONNECT_RETRY_TIMER_EXPIRED
     ],
     [                                          # Active
-        '_close_session',                      # Default transition
-        '_ignore_start_event',                 # BGP_EVENT_START
+        \&_close_session,                      # Default transition
+        \&_ignore_start_event,                 # BGP_EVENT_START
         undef,                                 # BGP_EVENT_STOP
-        '_handle_bgp_conn_open',               # BGP_EVENT_TRANSPORT_CONN_OPEN
+        \&_handle_bgp_conn_open,               # BGP_EVENT_TRANSPORT_CONN_OPEN
         undef,                                 # BGP_EVENT_TRANSPORT_CONN_CLOSED
-        '_handle_connect_retry_restart',       # BGP_EVENT_TRANSPORT_CONN_OPEN_FAILED
+        \&_handle_connect_retry_restart,       # BGP_EVENT_TRANSPORT_CONN_OPEN_FAILED
         undef,                                 # BGP_EVENT_TRANSPORT_FATAL_ERROR
-        '_handle_bgp_start_event'              # BGP_EVENT_CONNECT_RETRY_TIMER_EXPIRED
+        \&_handle_bgp_start_event              # BGP_EVENT_CONNECT_RETRY_TIMER_EXPIRED
     ],
     [                                          # OpenSent
-        '_handle_bgp_fsm_error',               # Default transition
-        '_ignore_start_event',                 # BGP_EVENT_START
-        '_cease',                              # BGP_EVENT_STOP
+        \&_handle_bgp_fsm_error,               # Default transition
+        \&_ignore_start_event,                 # BGP_EVENT_START
+        \&_cease,                              # BGP_EVENT_STOP
         undef,                                 # BGP_EVENT_TRANSPORT_CONN_OPEN
-        '_handle_open_sent_disconnect',        # BGP_EVENT_TRANSPORT_CONN_CLOSED
+        \&_handle_open_sent_disconnect,        # BGP_EVENT_TRANSPORT_CONN_CLOSED
         undef,                                 # BGP_EVENT_TRANSPORT_CONN_OPEN_FAILED
-        '_close_session',                      # BGP_EVENT_TRANSPORT_FATAL_ERROR
+        \&_close_session,                      # BGP_EVENT_TRANSPORT_FATAL_ERROR
         undef,                                 # BGP_EVENT_CONNECT_RETRY_TIMER_EXPIRED
-        '_handle_hold_timer_expired',          # BGP_EVENT_HOLD_TIMER_EXPIRED
+        \&_handle_hold_timer_expired,          # BGP_EVENT_HOLD_TIMER_EXPIRED
         undef,                                 # BGP_EVENT_KEEPALIVE_TIMER_EXPIRED
-        '_handle_bgp_open_received'            # BGP_EVENT_RECEIVE_OPEN_MESSAGE
+        \&_handle_bgp_open_received            # BGP_EVENT_RECEIVE_OPEN_MESSAGE
     ],
     [                                          # OpenConfirm
-        '_handle_bgp_fsm_error',               # Default transition
-        '_ignore_start_event',                 # BGP_EVENT_START
-        '_cease',                              # BGP_EVENT_STOP
+        \&_handle_bgp_fsm_error,               # Default transition
+        \&_ignore_start_event,                 # BGP_EVENT_START
+        \&_cease,                              # BGP_EVENT_STOP
         undef,                                 # BGP_EVENT_TRANSPORT_CONN_OPEN
-        '_close_session',                      # BGP_EVENT_TRANSPORT_CONN_CLOSED
+        \&_close_session,                      # BGP_EVENT_TRANSPORT_CONN_CLOSED
         undef,                                 # BGP_EVENT_TRANSPORT_CONN_OPEN_FAILED
-        '_close_session',                      # BGP_EVENT_TRANSPORT_FATAL_ERROR
+        \&_close_session,                      # BGP_EVENT_TRANSPORT_FATAL_ERROR
         undef,                                 # BGP_EVENT_CONNECT_RETRY_TIMER_EXPIRED
-        '_handle_hold_timer_expired',          # BGP_EVENT_HOLD_TIMER_EXPIRED
-        '_handle_keepalive_expired',           # BGP_EVENT_KEEPALIVE_TIMER_EXPIRED
+        \&_handle_hold_timer_expired,          # BGP_EVENT_HOLD_TIMER_EXPIRED
+        \&_handle_keepalive_expired,           # BGP_EVENT_KEEPALIVE_TIMER_EXPIRED
         undef,                                 # BGP_EVENT_RECEIVE_OPEN_MESSAGE
-        '_handle_receive_keepalive_message',   # BGP_EVENT_RECEIVE_KEEP_ALIVE_MESSAGE
+        \&_handle_receive_keepalive_message,   # BGP_EVENT_RECEIVE_KEEP_ALIVE_MESSAGE
         undef,                                 # BGP_EVENT_RECEIVE_UPDATE_MESSAGE
-        '_handle_receive_notification_message' # BGP_EVENT_RECEIVE_NOTIFICATION_MESSAGE
+        \&_handle_receive_notification_message # BGP_EVENT_RECEIVE_NOTIFICATION_MESSAGE
     ],
     [                                          # Established
-        '_handle_bgp_fsm_error',               # Default transition
-        '_ignore_start_event',                 # BGP_EVENT_START
-        '_cease',                              # BGP_EVENT_STOP
+        \&_handle_bgp_fsm_error,               # Default transition
+        \&_ignore_start_event,                 # BGP_EVENT_START
+        \&_cease,                              # BGP_EVENT_STOP
         undef,                                 # BGP_EVENT_TRANSPORT_CONN_OPEN
-        '_close_session',                      # BGP_EVENT_TRANSPORT_CONN_CLOSED
+        \&_close_session,                      # BGP_EVENT_TRANSPORT_CONN_CLOSED
         undef,                                 # BGP_EVENT_TRANSPORT_CONN_OPEN_FAILED
-        '_close_session',                      # BGP_EVENT_TRANSPORT_FATAL_ERROR
+        \&_close_session,                      # BGP_EVENT_TRANSPORT_FATAL_ERROR
         undef,                                 # BGP_EVENT_CONNECT_RETRY_TIMER_EXPIRED
-        '_handle_hold_timer_expired',          # BGP_EVENT_HOLD_TIMER_EXPIRED
-        '_handle_keepalive_expired',           # BGP_EVENT_KEEPALIVE_TIMER_EXPIRED
+        \&_handle_hold_timer_expired,          # BGP_EVENT_HOLD_TIMER_EXPIRED
+        \&_handle_keepalive_expired,           # BGP_EVENT_KEEPALIVE_TIMER_EXPIRED
         undef,                                 # BGP_EVENT_RECEIVE_OPEN_MESSAGE
-        '_handle_receive_keepalive_message',   # BGP_EVENT_RECEIVE_KEEP_ALIVE_MESSAGE
-        '_handle_receive_update_message',      # BGP_EVENT_RECEIVE_UPDATE_MESSAGE
-        '_handle_receive_notification_message' # BGP_EVENT_RECEIVE_NOTIFICATION_MESSAGE
+        \&_handle_receive_keepalive_message,   # BGP_EVENT_RECEIVE_KEEP_ALIVE_MESSAGE
+        \&_handle_receive_update_message,      # BGP_EVENT_RECEIVE_UPDATE_MESSAGE
+        \&_handle_receive_notification_message # BGP_EVENT_RECEIVE_NOTIFICATION_MESSAGE
     ]
 );
 
@@ -608,7 +608,7 @@ sub _handle_event
 
     # do action associated with transition
     if ( defined($action) ) {
-        $next_state = $this->$action;
+        $next_state = &{$action}($this);
     }
 
     $state = $BGP_STATES[$this->{_fsm_state}];
