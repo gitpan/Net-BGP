@@ -9,7 +9,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 ## Module Imports ##
 
@@ -215,6 +215,19 @@ sub withdrawn
 
     $this->{_withdrawn} = @_ ? shift() : $this->{_withdrawn};
     return ( $this->{_withdrawn} );
+}
+
+sub clone
+{
+    my $this = shift();
+    my ($key, $clone);
+
+    $clone = {};
+    foreach $key ( keys(%{$this}) ) {
+        $clone->{$key} = $this->{$key};
+    }
+
+    return ( bless($clone, ref($this)) );
 }
 
 ## Private Methods ##
@@ -677,13 +690,16 @@ sub _encode_message
 sub _encode_prefix
 {
     my $prefix = shift();
-    my ($octet, $buffer, $length);
+    my ($buffer, $length, @octets);
 
     ($prefix, $length) = split('/', $prefix);
 
     $buffer = pack('C', $length);
-    foreach $octet ( split(/\./, $prefix) ) {
-        $buffer .= pack('C', $octet);
+
+    @octets = split(/\./, $prefix);
+    while ( $length > 0 ) {
+        $buffer .= pack('C', shift(@octets));
+        $length -= 8;
     }
 
     return ( $buffer );
@@ -835,6 +851,11 @@ sub _encode_path_attributes
 
     $buffer = '';
 
+    # do not encode path attributes if no NLRI is present
+    if ( scalar(@{$this->{_nlri}}) == 0 ) {
+        return ( $buffer );
+    }
+
     # encode the ORIGIN path attribute
     if ( ! defined($this->{_origin}) ) {
         warn("mandatory path attribute ORIGIN not defined\n");
@@ -842,7 +863,7 @@ sub _encode_path_attributes
     $buffer = $this->_encode_origin();
 
     # encode the AS_PATH path attribute
-    if ( scalar(@{$this->{_as_path}}) == 0 ) {
+    if ( ! defined($this->{_as_path}) ) {
         warn("mandatory path attribute AS_PATH not defined\n");
     }
     $buffer .= $this->_encode_as_path();
@@ -906,6 +927,9 @@ Net::BGP::Update - Class encapsulating BGP-4 UPDATE message
         Origin          => INCOMPLETE,
         Withdraw        => [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ]
     );
+
+    # Object Copy
+    $clone = $update->clone();
 
     # Accessor Methods
     $aggregator_ref   = $update->aggregator($aggregator_ref);
@@ -1032,6 +1056,17 @@ represents route(s) advertised by a previous UPDATE message which are now being
 withdrawn by this UPDATE. It is expressed in the same way as the NLRI parameter.
 At least one of either the NLRI or Withdraw parameters is mandatory and must
 always be provided to the constructor.
+
+=head1 OBJECT COPY
+
+I<clone()> - clone a Net::BGP::Update object
+
+    $clone = $update->clone();
+
+This method creates an exact copy of the Net::BGP::Update object, with Withdrawn
+Routes, Path Attributes, and NLRI fields matching those of the original object.
+This is useful for propagating a modified UPDATE message when the original object
+needs to remain unchanged.
 
 =head1 ACCESSOR METHODS
 

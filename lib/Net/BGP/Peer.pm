@@ -9,7 +9,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 ## Module Imports ##
 
