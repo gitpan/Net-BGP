@@ -13,7 +13,7 @@ use vars qw(
 ## Inheritance and Versioning ##
 
 @ISA     = qw( Exporter );
-$VERSION = '0.07';
+$VERSION = '0.08';
 
 ## General Definitions ##
 
@@ -147,6 +147,9 @@ sub new
         elsif ( $arg =~ /passive/i ) {
             $this->{_passive} = $value;
         }
+        elsif ( $arg =~ /refreshcallback/i ) {
+            $this->{_refresh_callback} = $value;
+        }
         elsif ( $arg =~ /refresh/i ) {
             $this->{_refresh} = $value;
         }
@@ -158,9 +161,6 @@ sub new
         }
         elsif ( $arg =~ /updatecallback/i ) {
             $this->{_update_callback} = $value;
-        }
-        elsif ( $arg =~ /refreshcallback/i ) {
-            $this->{_refresh_callback} = $value;
         }
         elsif ( $arg =~ /resetcallback/i ) {
             $this->{_reset_callback} = $value;
