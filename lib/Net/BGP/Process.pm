@@ -9,7 +9,7 @@ use vars qw( $VERSION );
 
 ## Inheritance and Versioning ##
 
-$VERSION = '0.07';
+$VERSION = '0.09';
 
 ## Module Imports ##
 
@@ -39,7 +39,8 @@ sub new
         _trans_sock_fh  => {},
         _trans_sock_map=> {},
         _listen_socket => undef,
-        _listen_port   => BGP_PORT
+        _listen_port   => BGP_PORT,
+        _listen_addr   => INADDR_ANY,
     };
 
     while ( defined($arg = shift()) ) {
@@ -47,8 +48,11 @@ sub new
         if ( $arg =~ /port/i ) {
             $this->{_listen_port} = $value;
         }
+	elsif ( $arg =~ /listenaddr/i ) {
+            $this->{_listen_addr} = inet_aton($value);
+        }
 	else {
-	    croak "Unknwon argument '$arg'";
+	    croak "Unknown argument '$arg'";
 	}
     }
 
@@ -211,7 +215,8 @@ sub _init_listen_socket
 
         $socket->sockopt(SO_REUSEADDR, TRUE);
 
-        $sock_addr = sockaddr_in($this->{_listen_port}, INADDR_ANY);
+        $sock_addr = sockaddr_in($this->{_listen_port},
+                                 $this->{_listen_addr});
         $rv = $socket->bind($sock_addr);
         if ( ! defined($rv) ) {
             die("bind() failed");
@@ -333,7 +338,7 @@ intends to establish a session with a single peer.
 
 I<new()> - create a new Net::BGP::Process object
 
-    $bgp = new Net::BGP::Process( Port => $port );
+    $bgp = new Net::BGP::Process( Port => $port, ListenAddr => '1.2.3.4' );
 
 This is the constructor for Net::BGP::Process objects. It returns a
 reference to the newly created object. The following named parameters may
@@ -347,6 +352,11 @@ If the program cannot run with root priviliges, it is necessary to set
 this parameter to a value greater than or equal to 1024. Note that some
 BGP implementations may not allow the specification of an alternate port
 and may be unable to establish a connection to the B<Net::BGP::Process>.
+
+=head2 ListenAddr
+
+This parameter sets the IP address the BGP process listens on.  Defaults
+to INADDR_ANY.
 
 I<add_peer()> - add a new peer to the BGP process
 

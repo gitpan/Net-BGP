@@ -1,12 +1,12 @@
 This file contains message digests of all files listed in MANIFEST,
-signed via the Module::Signature module, version 0.37.
+signed via the Module::Signature module, version 0.55.
 
 To verify the content in this distribution, first make sure you have
 Module::Signature installed, then type:
 
     % cpansign -v
 
-It would check each file's integrity, as well as the signature's
+It will check each file's integrity, as well as the signature's
 validity.  If "==> Signature verified OK! <==" is not displayed,
 the distribution may already have been compromised, and you should
 not run its Makefile.PL or Build.PL.
@@ -14,17 +14,17 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 ff6f3d0d9d63a1c571054c01ffaee79548347adf Changes
+SHA1 0e58a897af766b7973dfb760a772a037e23b59f0 Changes
 SHA1 c8a030fb89a7aa4cf066499ad9647734e04fa230 MANIFEST
-SHA1 bc1b8ec51a017584611baa9e74782ba1052d1dc4 META.yml
+SHA1 c2f5f3d06303cb8ff9cba3ccebafe00159c267e2 META.yml
 SHA1 da3b9d6b7881211e0f9edffb42cf5ed6a803518d Makefile.PL
 SHA1 4f71203e5a83fe0c913a9ff280e13bc5651b25b4 README
-SHA1 e45b82df5987004e2734d9a066d606b4252a058f lib/Net/BGP.pm
+SHA1 e44856d2a1fa08d2f2a9f8cb9e3058309d939e11 lib/Net/BGP.pm
 SHA1 1fb58c1158bfc38ecf4c2345d54810a55837d2ef lib/Net/BGP/ASPath.pm
 SHA1 8e3de367235f2f0ad3a5a335193bdc90fcc2452b lib/Net/BGP/NLRI.pm
 SHA1 14859040027e317204dd3a74c77723322608402a lib/Net/BGP/Notification.pm
 SHA1 cb205c641a8dccee788cc0ebaf86073ee8a00afe lib/Net/BGP/Peer.pm
-SHA1 115e1eaa3c897e275075f1c4ae7964712fe98134 lib/Net/BGP/Process.pm
+SHA1 7792524c974205b36565ef03045169fd1489429f lib/Net/BGP/Process.pm
 SHA1 7f14f0d742b83a8e37bf06eccb07db3cebddc0fc lib/Net/BGP/Refresh.pm
 SHA1 ee9b00e930ad5aae042defe97c0150930e32b4ae lib/Net/BGP/Transport.pm
 SHA1 f0f621051da10d4b24ad5dea1adf70be8e9554bd lib/Net/BGP/Update.pm
@@ -37,9 +37,9 @@ SHA1 73bf7a1543975c43dda6675bcc38f88fb015c649 t/30-Update.t
 SHA1 ecdf770ddc706894e386148edadfaa5d7d1cc4c6 t/31-Refresh.t
 SHA1 ed89854fee89848a863e9742e62ed9d7dfa386a3 t/50-BGP.t
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.2 (GNU/Linux)
+Version: GnuPG v1.4.7 (FreeBSD)
 
-iD8DBQFBRZ+TXejZQ7TqiLoRApmBAJ9b/w6dHiocroLj5wrFo6K5V9ushwCeORw5
-DvJO+5ctgysurM8rmgBOkzo=
-=+Rw2
+iD8DBQFHM0xCyXDXg2WevT4RAgPXAKCXGL3mATXFtiCCBC9UBu6COLyWhwCdHqKK
+VMHEbOAcZGx6H/XrfCWo1pM=
+=lypq
 -----END PGP SIGNATURE-----
