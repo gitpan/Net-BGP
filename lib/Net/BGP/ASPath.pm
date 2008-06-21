@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
-# $Id: ASPath.pm,v 1.8 2003/10/28 09:06:59 unimlo Exp $
+# $Id: ASPath.pm 58 2008-06-20 22:46:08Z kbrint $
 
 package Net::BGP::ASPath::AS;
+use bytes;
 
 use strict;
 use Carp;
@@ -18,6 +19,8 @@ use overload
 	# DO NOT OVERLOAD @{} - it's an array - we need this!
 
 $VERSION = '0.07';
+
+use Net::BGP::Notification qw( :errors );
 
 @Net::BGP::ASPath::AS_SEQUENCE::ISA     = qw( Exporter );
 
@@ -109,7 +112,15 @@ sub _new_from_msg
 {
   my ($class,$buffer) = @_;
   my ($type,$len,@list) = unpack('CC',$buffer);
-  return undef if ($len*2+2 > length($buffer)); # Error in message!
+
+  if ($len*2+2 > length($buffer))
+  {
+      Net::BGP::Notification->throw(
+          ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
+          ErrorSubCode => BGP_ERROR_SUBCODE_BAD_AS_PATH
+      );
+  }
+
   ($type,$len,@list) = unpack('CCn*',substr($buffer,0,(2*$len)+2,''));
   $class = $BGP_PATH_ATTR_CLASS[$type];
   return ($class->new(\@list),$buffer);
@@ -359,7 +370,7 @@ sub _setfromstring
    $value = $3 || '';
    my $segment = Net::BGP::ASPath::AS->new($1);
    push(@{$this->{_as_path}},$segment);
-   # push(@{$this->{_as_path}},new Net::BGP::ASPath::AS($1));
+   # push(@{$this->{_as_path}}, Net::BGP::ASPath::AS->new($1));
   };
  return $this;
 }
@@ -497,7 +508,7 @@ sub aggregate
     {
      my $tail = $obj->_tail($head);
      $tail = '(' . $tail if $tail =~ /^[^\(]*\).*$/; # Fix tail
-     $obj = new Net::BGP::ASPath($tail);
+     $obj = Net::BGP::ASPath->new($tail);
      $set->merge($obj);
     };
    $head .= ')' if $head =~ /^\([^\)]+$/; # Fix head
@@ -505,7 +516,7 @@ sub aggregate
   };
 
  # Construct result
- return new Net::BGP::ASPath($res)->cleanup; 
+ return Net::BGP::ASPath->new($res)->cleanup;
 }
 
 ## Utility functions (not methods!) ##
@@ -638,10 +649,10 @@ Net::BGP::ASPath - Class encapsulating BGP-4 AS Path information
     use Net::BGP::ASPath;
 
     # Constructor
-    $aspath  = new Net::BGP::ASPath();
-    $aspath2 = new Net::BGP::ASPath([65001,65002]);
-    $aspath3 = new Net::BGP::ASPath("(65001 65002) 65010");
-    $aspath4 = new Net::BGP::ASPath("65001 {65011,65010}");
+    $aspath  = Net::BGP::ASPath->new();
+    $aspath2 = Net::BGP::ASPath->new([65001,65002]);
+    $aspath3 = Net::BGP::ASPath->new("(65001 65002) 65010");
+    $aspath4 = Net::BGP::ASPath->new("65001 {65011,65010}");
 
     # Object Copy
     $clone   = $aspath->clone();
@@ -697,7 +708,7 @@ confederation extentions.
 
 =item new() - create a new Net::BGP::ASPath object
 
-    $aspath = new Net::BGP::ASPath( PATHDATA );
+    $aspath = Net::BGP::ASPath->new( PATHDATA );
 
 This is the constructor for Net::BGP::ASPath objects. It returns a
 reference to the newly created object. The parameter may be either:

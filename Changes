@@ -1,8 +1,17 @@
 Revision history for Perl extension Net::BGP.
 
+0.10  
+	- permit sending attributes with length>255 [RT #36945],
+	  based on a patch submitted by Greg Skinner.
+
+	- "use bytes" so length() works correctly in multi-byte locale
+
 0.09  Thu Nov  8 17:31:40 UTC 2007
 
 	- Added "listenaddr" feature from Guillaume Lambert.
+
+0.08  2004-09-12
+	- Added a refresh callback
 
 0.07  Tue Oct 28 09:58:45 2003
 

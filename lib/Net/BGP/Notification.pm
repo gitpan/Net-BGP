@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Notification.pm,v 1.6 2003/10/28 09:06:59 unimlo Exp $
+# $Id: Notification.pm 43 2007-08-18 18:42:05Z kbrint $
 
 package Net::BGP::Notification;
 
@@ -15,6 +15,7 @@ $VERSION = '0.07';
 ## Module Imports ##
 
 use Exporter;
+use Carp;
 
 ## BGP Protocol Error Code and Subcode Enumerations ##
 
@@ -121,7 +122,17 @@ sub new
         }
     }
 
+    defined $this->{_error_code} or croak "ErrorCode not defined";
+    defined $this->{_error_subcode}
+        or $this->{_error_subcode} = BGP_ERROR_SUBCODE_NULL;
+
     return ( $this );
+}
+
+sub throw {
+    my $class = shift;
+    my $notif = $class->new(@_);
+    die $notif;
 }
 
 sub error_code
@@ -156,9 +167,9 @@ Net::BGP::Notification - Class encapsulating BGP-4 NOTIFICATION message
 
     use Net::BGP::Notification;
 
-    $error = new Net::BGP::Notification(
+    $error = Net::BGP::Notification->new(
         ErrorCode    => $error_code,
-        ErrorSubcode => $error_subcode,
+        ErrorSubCode => $error_subcode,
         ErrorData    => $error_data
     );
 
@@ -183,9 +194,9 @@ NOTIFICATION message.
 
 I<new()> - create a new Net::BGP::Notification object
 
-    $error = new Net::BGP::Notification(
+    $error = Net::BGP::Notification->new(
         ErrorCode    => $error_code,
-        ErrorSubcode => $error_subcode,
+        ErrorSubCode => $error_subcode,
         ErrorData    => $error_data
     );
 
@@ -198,7 +209,7 @@ be passed to the constructor.
 This parameter corresponds to the Error Code field of a NOTIFICATION
 message. It must be provided to the constructor.
 
-=head2 ErrorSubcode
+=head2 ErrorSubCode
 
 This parameter corresponds to the Error Subcode field of a NOTIFICATION
 message. It may be omitted, in which case the field defaults to the null
@@ -209,6 +220,10 @@ message. It may be omitted, in which case the field defaults to the null
 This parameter corresponds to the Error Data field of a NOTIFICATION
 message. It may be omitted, in which case the field defaults to a null
 (zero-length) value.
+
+I<throw()> - create a Notification object and throw an exception
+
+    Net::BGP::Notification->throw( same args as new );
 
 I<error_code()> - retrieve the value of the Error Code field
 

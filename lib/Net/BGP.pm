@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: BGP.pm,v 1.6 2003/10/28 09:06:59 unimlo Exp $
+# $Id: BGP.pm 61 2008-06-21 02:45:36Z kbrint $
 
 package Net::BGP;
 
@@ -9,7 +9,7 @@ use vars qw( $VERSION );
 
 ## Inheritance and Versioning ##
 
-$VERSION = '0.09';
+$VERSION = '0.10';
 
 ## End Code Section ##
 
@@ -24,8 +24,8 @@ Net::BGP - Border Gateway Protocol version 4 speaker/listener library
     use Net::BGP::Process;
     use Net::BGP::Peer;
 
-    $bgp  = new Net::BGP::Process();
-    $peer = new Net::BGP::Peer(
+    $bgp  = Net::BGP::Process->new();
+    $peer = Net::BGP::Peer->new(
         Start    => 1,
         ThisID   => '10.0.0.1',
         ThisAS   => 64512,

@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
-# $Id: Peer.pm,v 1.15 2003/10/28 09:06:59 unimlo Exp $
+# $Id: Peer.pm 58 2008-06-20 22:46:08Z kbrint $
 
 package Net::BGP::Peer;
+use bytes;
 
 use strict;
 use vars qw(
@@ -177,7 +178,7 @@ sub new
     }
 
     $transarg{parent} = $this;
-    $this->{_transport} = new Net::BGP::Transport(%transarg);
+    $this->{_transport} = Net::BGP::Transport->new(%transarg);
 
     weaken($knownpeers{$this} = $this);
     return ( $this );
@@ -487,7 +488,7 @@ Net::BGP::Peer - Class encapsulating BGP-4 peering session state and functionali
 
     use Net::BGP::Peer;
 
-    $peer = new Net::BGP::Peer(
+    $peer = Net::BGP::Peer->new(
         Start                => 1,
         ThisID               => '10.0.0.1',
         ThisAS               => 64512,

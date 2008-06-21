@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
-# $Id: Transport.pm,v 1.26 2003/10/28 09:06:59 unimlo Exp $
+# $Id: Transport.pm 58 2008-06-20 22:46:08Z kbrint $
 
 package Net::BGP::Transport;
+use bytes;
 
 use strict;
 use Errno qw(EAGAIN);
@@ -353,7 +354,7 @@ sub refresh
     my $this = shift;
 
     my ($refresh) = @_;
-    $refresh = new Net::BGP::Refresh(@_) unless ref $refresh eq 'Net::BGP::Refresh';
+    $refresh = Net::BGP::Refresh->new(@_) unless ref $refresh eq 'Net::BGP::Refresh';
 
     my $result = FALSE;
     if (( $this->{_fsm_state} == BGP_STATE_ESTABLISHED ) && $this->{_peer_refresh}) {
@@ -422,18 +423,16 @@ sub _clone
 
 ## Private Object Methods ##
 
+## This creates AND throws a ::Notification object.
 sub _error
 {
     my $this = shift();
-    my $error;
 
-    $error = new Net::BGP::Notification(
+    Net::BGP::Notification->throw(
         ErrorCode    => shift(),
-        ErrorSubCode => shift(),
+        ErrorSubCode => shift() || BGP_ERROR_SUBCODE_NULL,
         ErrorData    => shift()
     );
-
-    return ( $error );
 }
 
 sub _is_connected
@@ -483,31 +482,48 @@ sub _handle_event
 {
     my ($this, $event) = @_;
 
-    my $action = $BGP_FSM[$this->{_fsm_state}]->[$event];
-    if ( ! defined($action) ) {
-        $action = $BGP_FSM[$this->{_fsm_state}]->[0];
+    my $state = my $next_state = $this->{_fsm_state};
+
+    my $action =
+           $BGP_FSM[$state]->[$event]
+        || $BGP_FSM[$state]->[0] ## default action
+        || undef ;
+
+    eval {
+        $next_state = $action->($this) if defined $action;
+    };
+    if (my $oops = $@)
+    {
+        if (UNIVERSAL::isa($oops, 'Net::BGP::Notification'))
+        {
+            $this->_kill_session($oops);
+            $next_state = BGP_STATE_IDLE;
+        }
+        else
+        {
+            die $oops;
+        }
     }
-
-    my $last_state = $this->{_fsm_state};
-    my $state = $BGP_STATES[$last_state];
-    my $event_name = $BGP_EVENTS[$event];
-
-    # do action associated with transition
-    my $next_state = defined($action) ? &{$action}($this) : $this->{_fsm_state};
-    my $next_state_name = $BGP_STATES[$next_state];
 
     # transition to next state
     $this->{_fsm_state} = $next_state if defined $next_state;
 
-    # call reset-callback if session terminated
-    $this->parent->reset_callback(undef)
-	if ($last_state == BGP_STATE_ESTABLISHED)
-	&& ($next_state != $last_state);
-
-    # call refresh-callback if new session
-    $this->parent->refresh_callback(undef) # No refresh-message!
-	if ($next_state == BGP_STATE_ESTABLISHED)
-	&& ($next_state != $last_state);
+    ## trigger callbacks if we changed states
+    if ($next_state != $state)
+    {
+        if ( $state == BGP_STATE_ESTABLISHED )
+        {
+            ## session has terminated
+            ##
+            $this->parent->reset_callback(undef)
+        }
+        elsif ( $next_state == BGP_STATE_ESTABLISHED )
+        {
+            ## newly established session
+            ##
+            $this->parent->refresh_callback(undef);
+        }
+    }
 }
 
 sub _handle_pending_events
@@ -695,6 +711,7 @@ sub _close_session
     $this->{_peer_socket} = $socket = undef;
     $this->{_peer_socket_connected} = FALSE;
     $this->{_in_msg_buffer} = '';
+    $this->{_out_msg_buffer} = '';
     $this->{_in_msg_buf_state} = AWAITING_HEADER_START;
     $this->{_hold_timer} = undef;
     $this->{_keep_alive_timer} = undef;
@@ -757,11 +774,6 @@ sub _handle_receive_update_message
     $buffer = $this->_dequeue_message();
     $update = Net::BGP::Update->_new_from_msg($buffer);
 
-    if ( ref($update) eq 'Net::BGP::Notification' ) {
-        $this->_kill_session($update);
-        return ( BGP_STATE_IDLE );
-    }
-
     # invoke user callback function
     $this->parent->update_callback($update);
 
@@ -782,14 +794,9 @@ sub _handle_receive_refresh_message
     $refresh = Net::BGP::Refresh->_new_from_msg($buffer);
 
     unless ( $this->parent->this_can_refresh ) {
-        $refresh = new Net::BGP::Notification(
-		ErrorCode => BGP_ERROR_CODE_FINITE_STATE_MACHINE
-		);
-    }
-
-    if ( ref($refresh) eq 'Net::BGP::Notification' ) {
-        $this->_kill_session($refresh);
-        return ( BGP_STATE_IDLE );
+        Net::BGP::Notification->throw(
+            ErrorCode => BGP_ERROR_CODE_FINITE_STATE_MACHINE
+        );
     }
 
     # invoke user callback function
@@ -830,21 +837,15 @@ sub _handle_keepalive_expired
 sub _handle_hold_timer_expired
 {
     my $this = shift();
-    my $error;
 
-    $error = $this->_error(BGP_ERROR_CODE_HOLD_TIMER_EXPIRED, BGP_ERROR_SUBCODE_NULL);
-    $this->_kill_session($error);
-    return ( BGP_STATE_IDLE );
+    $this->_error(BGP_ERROR_CODE_HOLD_TIMER_EXPIRED);
 }
 
 sub _handle_bgp_fsm_error
 {
     my $this = shift();
-    my $error;
 
-    $error = $this->_error(BGP_ERROR_CODE_FINITE_STATE_MACHINE, BGP_ERROR_SUBCODE_NULL);
-    $this->_kill_session($error);
-    return ( BGP_STATE_IDLE );
+    $this->_error(BGP_ERROR_CODE_FINITE_STATE_MACHINE);
 }
 
 sub _handle_bgp_conn_open
@@ -956,7 +957,7 @@ sub _handle_bgp_start_event
     # initiate the TCP transport connection
     if ( ! $this->parent->is_passive ) {
         eval {
-            $socket = new IO::Socket( Domain => AF_INET );
+            $socket = IO::Socket->new( Domain => AF_INET );
             if ( ! defined($socket) ) {
                 die("IO::Socket construction failed");
             }
@@ -1016,12 +1017,13 @@ sub _min
 sub _cease
 {
     my $this = shift();
-    my $error;
 
     if ( $this->{_fsm_state} == BGP_STATE_ESTABLISHED ) {
 	$this->parent->reset_callback();
-	};
-    $error = $this->_error(BGP_ERROR_CODE_CEASE, BGP_ERROR_SUBCODE_NULL);
+    }
+
+    my $error = Net::BGP::Notification->new( ErrorCode => BGP_ERROR_CODE_CEASE );
+
     $this->_kill_session($error);
 
     return ( BGP_STATE_IDLE );
@@ -1061,48 +1063,41 @@ sub _decode_bgp_message_header
 {
     my ($this, $header) = @_;
     my ($marker, $length, $type);
-    my $error;
 
     # validate the BGP message header length
     if ( length($header) != BGP_MESSAGE_HEADER_LENGTH ) {
-        $error = $this->_error(
+        $this->_error(
             BGP_ERROR_CODE_MESSAGE_HEADER,
             BGP_ERROR_SUBCODE_BAD_MSG_LENGTH,
             pack('n', length($header))
         );
-
-        $this->_kill_session($error);
     }
 
     # decode and validate the message header Marker field
     $marker = substr($header, 0, 16);
     if ( $marker ne (pack('C', 0xFF) x 16) ) {
-        $error = $this->_error(BGP_ERROR_CODE_MESSAGE_HEADER, BGP_ERROR_SUBCODE_CONN_NOT_SYNC);
-        $this->_kill_session($error);
+        $this->_error(BGP_ERROR_CODE_MESSAGE_HEADER,
+                      BGP_ERROR_SUBCODE_CONN_NOT_SYNC);
     }
 
     # decode and validate the message header Length field
     $length = unpack('n', substr($header, 16, 2));
     if ( ($length < BGP_MESSAGE_HEADER_LENGTH) || ($length > BGP_MAX_MESSAGE_LENGTH) ) {
-        $error = $this->_error(
+        $this->_error(
             BGP_ERROR_CODE_MESSAGE_HEADER,
             BGP_ERROR_SUBCODE_BAD_MSG_LENGTH,
             pack('n', $length)
         );
-
-        $this->_kill_session($error);
     }
 
     # decode and validate the message header Type field
     $type = unpack('C', substr($header, 18, 1));
     if ( ($type < BGP_MESSAGE_OPEN) || ($type > BGP_MESSAGE_REFRESH) ) {
-        $error = $this->_error(
+        $this->_error(
             BGP_ERROR_CODE_MESSAGE_HEADER,
             BGP_ERROR_SUBCODE_BAD_MSG_TYPE,
             pack('C', $type)
         );
-
-        $this->_kill_session($error);
     }
 
     if ( $type == BGP_MESSAGE_KEEPALIVE ) {
@@ -1151,32 +1146,29 @@ sub _decode_bgp_open_message
 {
     my ($this, $buffer) = @_;
     my ($version, $as, $hold_time, $bgp_id);
-    my $error;
 
     # decode and validate BGP version
     $version = unpack('C', substr($buffer, 0, 1));
     if ( $version != BGP_VERSION_4 ) {
-        $error = $this->_error(
+        $this->_error(
             BGP_ERROR_CODE_OPEN_MESSAGE,
             BGP_ERROR_SUBCODE_BAD_VERSION_NUM,
             pack('n', BGP_VERSION_4)
         );
-
-        $this->_kill_session($error);
     }
 
     # decode and validate remote Autonomous System number
     $as = unpack('n', substr($buffer, 1, 2));
     if ( $as != $this->parent->peer_as ) {
-        $error = $this->_error(BGP_ERROR_CODE_OPEN_MESSAGE, BGP_ERROR_SUBCODE_BAD_PEER_AS);
-        $this->_kill_session($error);
+        $this->_error(BGP_ERROR_CODE_OPEN_MESSAGE,
+                      BGP_ERROR_SUBCODE_BAD_PEER_AS);
     }
 
     # decode and validate received Hold Time
     $hold_time = _min(unpack('n', substr($buffer, 3, 2)), $this->{_hold_time});
     if ( ($hold_time < 3) && ($hold_time != 0) ) {
-        $error = $this->_error(BGP_ERROR_CODE_OPEN_MESSAGE, BGP_ERROR_SUBCODE_BAD_HOLD_TIME);
-        $this->_kill_session($error);
+        $this->_error(BGP_ERROR_CODE_OPEN_MESSAGE,
+                      BGP_ERROR_SUBCODE_BAD_HOLD_TIME);
     }
 
     # decode received BGP Identifier
@@ -1226,8 +1218,10 @@ sub _decode_bgp_notification_message
     # decode Data field
     $data = substr($buffer, 2, length($buffer) - 2);
 
-    $error = $this->_error($error_code, $error_subcode, $data);
-    return ( $error );
+    return Net::BGP::Notification->new(
+        ErrorCode => $error_code,
+        ErrorSubcode => $error_subcode,
+        ErrorData => $data);
 }
 
 sub _encode_bgp_keepalive_message
@@ -1277,9 +1271,9 @@ Net::BGP::Transport - Class encapsulating BGP-4 transport session state and func
 
     use Net::BGP::Transport;
 
-    $trans = new Net::BGP::Transport(
+    $trans = Net::BGP::Transport->new(
         Start                => 1,
-	Parent               => new Net::BGP::Peer(),
+	Parent               => Net::BGP::Peer->new(),
         ConnectRetryTime     => 300,
         HoldTime             => 60,
         KeepAliveTime        => 20

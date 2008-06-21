@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
-# $Id: Update.pm,v 1.8 2003/10/28 09:06:59 unimlo Exp $
+# $Id: Update.pm 60 2008-06-21 02:29:37Z kbrint $
 
 package Net::BGP::Update;
+use bytes;
 
 use strict;
 use vars qw(
@@ -42,7 +43,7 @@ sub BGP_PATH_ATTR_COMMUNITIES      { 8 }
 ## BGP Path Attribute Flag Octets ##
 
 @BGP_PATH_ATTR_FLAGS = (
-    0x00,
+    0x00, ## TODO: change to undef after warnings enabled
     0x40,
     0x40,
     0x40,
@@ -52,6 +53,15 @@ sub BGP_PATH_ATTR_COMMUNITIES      { 8 }
     0xC0,
     0xC0
 );
+
+## RFC 4271, sec 4.3
+our $BGP_PATH_ATTR_FLAG_EXTLEN = 0x10;
+
+## Per RFC 4271, sec 5.
+##
+our @_BGP_MANDATORY_ATTRS = ( BGP_PATH_ATTR_ORIGIN,
+                              BGP_PATH_ATTR_AS_PATH,
+                              BGP_PATH_ATTR_NEXT_HOP );
 
 ## Export Tag Definitions ##
 
@@ -165,22 +175,31 @@ sub ashash
 sub _new_from_msg
 {
     my ($class, $buffer) = @_;
-    my $error;
 
     my $this = $class->new();
 
-    $error = $this->_decode_message($buffer);
+    $this->_decode_message($buffer);
 
-    return ( defined($error) ? $error : $this );
+    return $this;
 }
 
 sub _encode_attr
 {
     my ($this, $type, $data) = @_;
-    my $buffer;
+    my $buffer = '';
 
-    $buffer  = _encode_path_attr_type($type);
-    $buffer .= pack('C', length($data));
+    my $flag = $BGP_PATH_ATTR_FLAGS[$type];
+    my $len_format = 'C';
+
+    my $len = length($data);
+    if ($len > 255)
+    {
+        $flag |= $BGP_PATH_ATTR_FLAG_EXTLEN;
+        $len_format = 'n';
+    }
+
+    $buffer .= pack('CC', $flag, $type);
+    $buffer .= pack($len_format, $len);
     $buffer .= $data;
 
     return ( $buffer );
@@ -189,23 +208,22 @@ sub _encode_attr
 sub _decode_message
 {
     my ($this, $buffer) = @_;
+
     my $offset = 0;
-    my ($length, $result, $error);
+    my $length;
 
     # decode the Withdrawn Routes field
     $length = unpack('n', substr($buffer, $offset, 2));
-    $offset = 2;
+    $offset += 2;
 
     if ( $length > (length($buffer) - $offset) ) {
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_MALFORMED_ATTR_LIST
         );
-
-        return ( $error );
     }
 
-    $result = $this->_decode_withdrawn(substr($buffer, $offset, $length));
+    $this->_decode_withdrawn(substr($buffer, $offset, $length));
     $offset += $length;
 
     # decode the Path Attributes field
@@ -213,21 +231,17 @@ sub _decode_message
     $offset += 2;
 
     if ( $length > (length($buffer) - $offset) ) {
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_MALFORMED_ATTR_LIST
         );
-
-        return ( $error );
     }
 
-    $result = $this->_decode_path_attributes(substr($buffer, $offset, $length));
+    $this->_decode_path_attributes(substr($buffer, $offset, $length));
     $offset += $length;
 
     # decode the Network Layer Reachability Information field
-    $result = $this->_decode_nlri(substr($buffer, $offset));
-
-    return ( $result );
+    $this->_decode_nlri(substr($buffer, $offset));
 }
 
 sub _decode_origin
@@ -246,11 +260,6 @@ sub _decode_as_path
 
     my $path = Net::BGP::ASPath->_new_from_msg($buffer);
 
-    return new Net::BGP::Notification(
-	ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
-	ErrorSubCode => BGP_ERROR_SUBCODE_BAD_AS_PATH
-	) unless defined $path;
-
     $this->{_as_path} = $path;
 
     $this->{_attr_mask}->[BGP_PATH_ATTR_AS_PATH] ++;
@@ -261,17 +270,15 @@ sub _decode_as_path
 sub _decode_next_hop
 {
     my ($this, $buffer) = @_;
-    my ($error, $data);
+    my ($data);
 
     if ( length($buffer) != 0x04 ) {
         $data = $this->_encode_attr(BGP_PATH_ATTR_NEXT_HOP, $buffer);
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_LENGTH,
             ErrorData    => $data
         );
-
-        return ( $error );
     }
 
     # TODO: check if _next_hop is a valid IP host address
@@ -284,17 +291,15 @@ sub _decode_next_hop
 sub _decode_med
 {
     my ($this, $buffer) = @_;
-    my ($error, $data);
+    my ($data);
 
     if ( length($buffer) != 0x04 ) {
         $data = $this->_encode_attr(BGP_PATH_ATTR_MULTI_EXIT_DISC, $buffer);
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_LENGTH,
             ErrorData    => $data
         );
-
-        return ( $error );
     }
 
     $this->{_med} = unpack('N', $buffer);
@@ -306,17 +311,15 @@ sub _decode_med
 sub _decode_local_pref
 {
     my ($this, $buffer) = @_;
-    my ($error, $data);
+    my ($data);
 
     if ( length($buffer) != 0x04 ) {
         $data = $this->_encode_attr(BGP_PATH_ATTR_LOCAL_PREF, $buffer);
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_LENGTH,
             ErrorData    => $data
         );
-
-        return ( $error );
     }
 
     $this->{_local_pref} = unpack('N', $buffer);
@@ -328,17 +331,15 @@ sub _decode_local_pref
 sub _decode_atomic_aggregate
 {
     my ($this, $buffer) = @_;
-    my ($error, $data);
+    my ($data);
 
     if ( length($buffer) ) {
         $data = $this->_encode_attr(BGP_PATH_ATTR_ATOMIC_AGGREGATE, $buffer);
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_LENGTH,
             ErrorData    => $data
         );
-
-        return ( $error );
     }
 
     $this->{_atomic_agg} = TRUE;
@@ -350,17 +351,15 @@ sub _decode_atomic_aggregate
 sub _decode_aggregator
 {
     my ($this, $buffer) = @_;
-    my ($error, $data);
+    my ($data);
 
     if ( length($buffer) != 0x06 ) {
         $data = $this->_encode_attr(BGP_PATH_ATTR_AGGREGATOR, $buffer);
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_LENGTH,
             ErrorData    => $data
         );
-
-        return ( $error );
     }
 
     $this->{_aggregator}->[0] = unpack('n', substr($buffer, 0, 2));
@@ -374,17 +373,15 @@ sub _decode_communities
 {
     my ($this, $buffer) = @_;
     my ($as, $val, $ii, $offset, $count);
-    my ($error, $data);
+    my ($data);
 
     if ( length($buffer) % 0x04 ) {
         $data = $this->_encode_attr(BGP_PATH_ATTR_COMMUNITIES, $buffer);
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_LENGTH,
             ErrorData    => $data
         );
-
-        return ( $error );
     }
 
     $offset = 0;
@@ -406,7 +403,7 @@ sub _decode_path_attributes
     my ($this, $buffer) = @_;
     my ($offset, $data_length);
     my ($flags, $type, $length, $len_format, $len_bytes, $sub, $data);
-    my ($error, $error_data, $ii);
+    my ($error_data, $ii);
     my @decode_sub = (
         undef,
         \&_decode_origin,
@@ -428,7 +425,7 @@ sub _decode_path_attributes
 
         $len_format = 'C';
         $len_bytes  = 1;
-        if ( $flags & 0x10 ) {
+        if ( $flags & $BGP_PATH_ATTR_FLAG_EXTLEN ) {
             $len_format = 'n';
             $len_bytes  = 2;
         }
@@ -436,63 +433,56 @@ sub _decode_path_attributes
         $length  = unpack($len_format, substr($buffer, $offset, $len_bytes));
         $offset += $len_bytes;
 
-        $error_data = substr($buffer, $offset - $len_bytes - 2, $length + $len_bytes + 2);
-        if ( $BGP_PATH_ATTR_FLAGS[$type] != $flags ) {
-            $error = new Net::BGP::Notification(
-                ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
-                ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_FLAGS,
-                ErrorData    => $error_data
-            );
-
-            return ( $error );
-        }
-
         if ( $length > ($data_length - ($len_bytes + 2)) ) {
             $data = substr($buffer, $offset - $len_bytes - 2, $length + $len_bytes + 2);
-            $error = new Net::BGP::Notification(
+            Net::BGP::Notification->throw(
                 ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
                 ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_LENGTH,
                 ErrorData    => $error_data
             );
-
-            return ( $error );
         }
 
-        $sub = $decode_sub[$type];
-        $this->$sub(substr($buffer, $offset, $length));
+        ## do we know how to decode this attribute?
+        if (defined $decode_sub[$type])
+        {
+            $error_data = substr($buffer, $offset - $len_bytes - 2, $length + $len_bytes + 2);
+            if ( $BGP_PATH_ATTR_FLAGS[$type] != $flags ) {
+                Net::BGP::Notification->throw(
+                    ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
+                    ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_FLAGS,
+                    ErrorData    => $error_data
+                );
+            }
+
+            $sub = $decode_sub[$type];
+            $this->$sub(substr($buffer, $offset, $length));
+        }
+
         $offset += $length;
         $data_length -= ($length + $len_bytes + 2);
     }
 
-    # Check for missing mandatory well-known attributes
-    $error_data = $this->{_attr_mask}->[BGP_PATH_ATTR_ORIGIN]
-        ? BGP_PATH_ATTR_ORIGIN : 0;
-    $error_data = $this->{_attr_mask}->[BGP_PATH_ATTR_AS_PATH]
-        ? BGP_PATH_ATTR_AS_PATH : 0;
-    $error_data = $this->{_attr_mask}->[BGP_PATH_ATTR_NEXT_HOP]
-        ? BGP_PATH_ATTR_NEXT_HOP : 0;
+    ## Check for missing mandatory well-known attributes
+    ##
+    for my $attr (@_BGP_MANDATORY_ATTRS)
+    {
+        $this->{_attr_mask}->[$attr]
+            or Net::BGP::Notification->throw(
+                ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
+                ErrorSubCode => BGP_ERROR_SUBCODE_MISSING_WELL_KNOWN_ATTR,
+                ErrorData    => pack('C', $attr)
+            );
+    }
 
-    if ( $error_data ) {
-        $error = new Net::BGP::Notification(
+    ## Check for repeated attributes, which violates RFC 4271, sec 5.
+    ##
+    if ( grep { defined $_ and $_ > 1 } @{$this->{_attr_mask}||[]} )
+    {
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
-            ErrorSubCode => BGP_ERROR_SUBCODE_MISSING_WELL_KNOWN_ATTR,
-            ErrorData    => pack('C', $error_data)
+            ErrorSubCode => BGP_ERROR_SUBCODE_MALFORMED_ATTR_LIST
         );
     }
-
-    # Check for repeated attributes
-    for ( $ii = BGP_PATH_ATTR_ORIGIN; $ii <= BGP_PATH_ATTR_COMMUNITIES; $ii ++ ) {
-        if ( $this->{_attr_mask}->[$ii] > 1 ) {
-            $error = new Net::BGP::Notification(
-                ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
-                ErrorSubCode => BGP_ERROR_SUBCODE_MALFORMED_ATTR_LIST
-            );
-
-            last;
-        }
-    }
-
-    return ( $error );
 }
 
 sub _decode_prefix_list
@@ -528,41 +518,33 @@ sub _decode_prefix_list
 sub _decode_withdrawn
 {
     my ($this, $buffer) = @_;
-    my ($result, $error, @prefix_list);
+    my ($result, @prefix_list);
 
     ($result, @prefix_list) = $this->_decode_prefix_list($buffer);
     if ( ! $result ) {
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_MALFORMED_ATTR_LIST
         );
-
-        return ( $error );
     }
 
     push(@{$this->{_withdrawn}}, @prefix_list);
-
-    return ( undef );
 }
 
 sub _decode_nlri
 {
     my ($this, $buffer) = @_;
-    my ($result, $error, @prefix_list);
+    my ($result, @prefix_list);
 
     ($result, @prefix_list) = $this->_decode_prefix_list($buffer);
     if ( ! $result ) {
-        $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
             ErrorSubCode => BGP_ERROR_SUBCODE_BAD_NLRI
         );
-
-        return ( $error );
     }
 
     push(@{$this->{_nlri}}, @prefix_list);
-
-    return ( undef );
 }
 
 sub _encode_message
@@ -615,100 +597,55 @@ sub _encode_prefix_list
     return ( $buffer );
 }
 
-sub _encode_path_attr_type
-{
-    my $type = shift();
-    my $buffer;
-
-    $buffer  = pack('C', $BGP_PATH_ATTR_FLAGS[$type]);
-    $buffer .= pack('C', $type);
-
-    return ( $buffer );
-}
-
 sub _encode_origin
 {
     my $this = shift();
-    my $buffer;
 
-    $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_ORIGIN);
-    $buffer .= pack('C', 0x01);
-    $buffer .= pack('C', $this->{_origin});
-
-    return ( $buffer );
+    $this->_encode_attr(BGP_PATH_ATTR_ORIGIN,
+                        pack('C', $this->{_origin}));
 }
 
 sub _encode_as_path
 {
     my $this = shift();
-
     my $as_buffer = $this->{_as_path}->_encode;
-
-    my $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_AS_PATH);
-    $buffer .= pack('C', length($as_buffer));
-    $buffer .= $as_buffer;
-
-    return $buffer;
+    $this->_encode_attr(BGP_PATH_ATTR_AS_PATH, $as_buffer);
 }
 
 sub _encode_next_hop
 {
     my $this = shift();
-    my $buffer;
-
-    $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_NEXT_HOP);
-    $buffer .= pack('C', 0x04);
-    $buffer .= inet_aton($this->{_next_hop});
-
-    return ( $buffer );
+    $this->_encode_attr(BGP_PATH_ATTR_NEXT_HOP,
+                        inet_aton($this->{_next_hop}));
 }
 
 sub _encode_med
 {
     my $this = shift();
-    my $buffer;
-
-    $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_MULTI_EXIT_DISC);
-    $buffer .= pack('C', 0x04);
-    $buffer .= pack('N', $this->{_med});
-
-    return ( $buffer );
+    $this->_encode_attr(BGP_PATH_ATTR_MULTI_EXIT_DISC,
+                        pack('N', $this->{_med}));
 }
 
 sub _encode_local_pref
 {
     my $this = shift();
-    my $buffer;
-
-    $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_LOCAL_PREF);
-    $buffer .= pack('C', 0x04);
-    $buffer .= pack('N', $this->{_local_pref});
-
-    return ( $buffer );
+    $this->_encode_attr(BGP_PATH_ATTR_LOCAL_PREF,
+                        pack('N', $this->{_local_pref}));
 }
 
 sub _encode_atomic_aggregate
 {
     my $this = shift();
-    my $buffer;
-
-    $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_ATOMIC_AGGREGATE);
-    $buffer .= pack('C', 0x00);
-
-    return ( $buffer );
+    $this->_encode_attr(BGP_PATH_ATTR_ATOMIC_AGGREGATE);
 }
 
 sub _encode_aggregator
 {
     my $this = shift();
-    my $buffer;
-
-    $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_AGGREGATOR);
-    $buffer .= pack('C', 0x06);
-    $buffer .= pack('n', $this->{_aggregator}->[0]);
-    $buffer .= inet_aton($this->{_aggregator}->[1]);
-
-    return ( $buffer );
+    $this->_encode_attr(BGP_PATH_ATTR_AGGREGATOR,
+                        pack('Cn',
+                             $this->{_aggregator}->[0],
+                             inet_aton($this->{_aggregator}->[1])));
 }
 
 sub _encode_communities
@@ -720,15 +657,10 @@ sub _encode_communities
     @communities = @{$this->{_communities}};
     foreach $community ( @communities ) {
         ($as, $val) = split(/\:/, $community);
-        $community_buffer .= pack('n', $as);
-        $community_buffer .= pack('n', $val);
+        $community_buffer .= pack('nn', $as, $val);
     }
 
-    $buffer  = _encode_path_attr_type(BGP_PATH_ATTR_COMMUNITIES);
-    $buffer .= pack('C', scalar(@communities) * 0x04);
-    $buffer .= $community_buffer;
-
-    return ( $buffer );
+    $this->_encode_attr(BGP_PATH_ATTR_COMMUNITIES, $community_buffer);
 }
 
 sub _encode_path_attributes
@@ -803,7 +735,7 @@ Net::BGP::Update - Class encapsulating BGP-4 UPDATE message
     use Net::BGP::Update qw( :origin );
 
     # Constructor
-    $update = new Net::BGP::Update(
+    $update = Net::BGP::Update->new(
         NLRI            => [ qw( 10/8 172.168/16 ) ],
         Withdraw        => [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ],
 	# For Net::BGP::NLRI
@@ -818,8 +750,8 @@ Net::BGP::Update - Class encapsulating BGP-4 UPDATE message
     );
 
     # Construction from a NLRI object:
-    $nlri = new Net::BGP::NLRI( ... );
-    $update = new Net::BGP::Update($nlri,$nlri_ref,$withdrawn_ref);
+    $nlri = Net::BGP::NLRI->new( ... );
+    $update = Net::BGP::Update->new($nlri,$nlri_ref,$withdrawn_ref);
 
     # Object Copy
     $clone = $update->clone();
@@ -849,7 +781,7 @@ the UPDATE message fields by means of the accessor methods.
 
 I<new()> - create a new Net::BGP::Update object
 
-    $update = new Net::BGP::Update(
+    $update = Net::BGP::Update->new(
         NLRI            => [ qw( 10/8 172.168/16 ) ],
         Withdraw        => [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ],
 	# For Net::BGP::NLRI
@@ -870,10 +802,10 @@ path attribute.
 
 An alternative is to construct an object from a Net::BGP::NLRI object:
 
-    $nlri = new Net::BGP::NLRI( ... );
+    $nlri = Net::BGP::NLRI->new( ... );
     $nlri_ref = [ qw( 10/8 172.168/16 ) ];
     $withdrawn_ref = [ qw( 192.168.1/24 172.10/16 192.168.2.1/32 ) ];
-    $update = new Net::BGP::Update($nlri,$nlri_ref,$withdrawn_ref);
+    $update = Net::BGP::Update->new($nlri,$nlri_ref,$withdrawn_ref);
 
 The NLRI object will not be modified in any way.
 

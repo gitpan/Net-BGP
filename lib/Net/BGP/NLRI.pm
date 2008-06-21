@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: NLRI.pm,v 1.8 2003/10/28 09:06:59 unimlo Exp $
+# $Id: NLRI.pm 21 2007-07-28 23:04:58Z kbrint $
 
 package Net::BGP::NLRI;
 
@@ -65,7 +65,7 @@ sub new
     my ($arg, $value);
 
     my $this = {
-        _as_path      => new Net::BGP::ASPath,
+        _as_path      => Net::BGP::ASPath->new,
         _origin       => IGP,
         _next_hop     => undef,
         _med          => undef,
@@ -82,7 +82,7 @@ sub new
         $value = shift();
 
         if ( $arg =~ /aspath/i ) {
-            $this->{_as_path} = ref $value eq 'Net::BGP::ASPath' ? $value : new Net::BGP::ASPath($value);
+            $this->{_as_path} = ref $value eq 'Net::BGP::ASPath' ? $value : Net::BGP::ASPath->new($value);
         }
         elsif ( $arg =~ /origin/i ) {
             $this->{_origin} = $value;
@@ -150,7 +150,7 @@ sub as_path
 {
     my $this = shift();
 
-    $this->{_as_path} = @_ ? (ref $_[0] eq 'Net::BGP::ASPath' ? shift : new Net::BGP::ASPath(shift)) : $this->{_as_path};
+    $this->{_as_path} = @_ ? (ref $_[0] eq 'Net::BGP::ASPath' ? shift : Net::BGP::ASPath->new(shift)) : $this->{_as_path};
     return $this->{_as_path};
 }
 
@@ -355,10 +355,10 @@ Net::BGP::NLRI - Class encapsulating BGP-4 NLRI information
     use Net::BGP::NLRI qw( :origin );
 
     # Constructor
-    $nlri = new Net::BGP::NLRI(
+    $nlri = Net::BGP::NLRI->new(
         Aggregator      => [ 64512, '10.0.0.1' ],
         AtomicAggregate => 1,
-        AsPath          => new Net::BGP::ASPath("64512 64513 64514"),
+        AsPath          => Net::BGP::ASPath->new("64512 64513 64514"),
         Communities     => [ qw( 64512:10000 64512:10001 ) ],
         LocalPref       => 100,
         MED             => 200,
@@ -404,9 +404,9 @@ accessible). See B<Net::BGP::Update> for more infomration.
 
 I<new()> - create a new Net::BGP::NLRI object
 
-    $nlri = new Net::BGP::NLRI(
+    $nlri = Net::BGP::NLRI->new(
         Aggregator      => [ 64512, '10.0.0.1' ],
-        AsPath          => new Net::BGP::ASPath("64512 64513 64514"),
+        AsPath          => Net::BGP::ASPath->new("64512 64513 64514"),
         AtomicAggregate => 1,
         Communities     => [ qw( 64512:10000 64512:10001 ) ],
         LocalPref       => 100,

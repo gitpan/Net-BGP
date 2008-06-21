@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
-# $Id: Refresh.pm,v 1.6 2003/10/28 09:06:59 unimlo Exp $
+# $Id: Refresh.pm 58 2008-06-20 22:46:08Z kbrint $
 
 package Net::BGP::Refresh;
+use bytes;
 
 use strict;
 use vars qw( $VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS @AFI @SAFI );
@@ -98,13 +99,12 @@ sub safi
 sub _new_from_msg
 {
     my ($class, $buffer) = @_;
-    my $error;
 
-    my $this = new $class;
+    my $this = $class->new;
 
-    $error = $this->_decode_message($buffer);
+    $this->_decode_message($buffer);
 
-    return ( defined($error) ? $error : $this );
+    return $this;
 }
 
 sub _decode_message
@@ -112,11 +112,9 @@ sub _decode_message
     my ($this, $buffer) = @_;
 
     if ( length($buffer) != 4 ) {
-        my $error = new Net::BGP::Notification(
+        Net::BGP::Notification->throw(
             ErrorCode    => BGP_ERROR_CODE_FINITE_STATE_MACHINE
         );
-
-        return $error;
     }
 
    ($this->{_afi},undef,$this->{_safi}) = unpack('ncc', $buffer);
@@ -146,7 +144,7 @@ Net::BGP::Refresh - Class encapsulating BGP-4 REFRESH message
 
     use Net::BGP::Refresh;
 
-    $refresh = new Net::BGP::Refresh(
+    $refresh = Net::BGP::Refresh->new(
         AFI      => $address_family_identifier,
         SAFI     => $subsequent_address_family_identifier
     );
@@ -169,7 +167,7 @@ I<refresh()> function with a B<Net::BGP::Refresh> object as argument.
 
 I<new()> - create a new Net::BGP::Refresh object
 
-    $error = new Net::BGP::Refresh(
+    $error = Net::BGP::Refresh->new(
         AFI      => $address_family_identifier,
         SAFI     => $subsequent_address_family_identifier
     );

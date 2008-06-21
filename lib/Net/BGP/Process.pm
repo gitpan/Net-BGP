@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: Process.pm,v 1.20 2003/10/28 09:06:59 unimlo Exp $
+# $Id: Process.pm 56 2007-11-08 21:11:21Z kbrint $
 
 package Net::BGP::Process;
 
@@ -30,9 +30,9 @@ sub new
     my ($arg, $value);
 
     my $this = {
-        _read_fh       => new IO::Select(),
-        _write_fh      => new IO::Select(),
-        _error_fh      => new IO::Select(),
+        _read_fh       => IO::Select->new(),
+        _write_fh      => IO::Select->new(),
+        _error_fh      => IO::Select->new(),
         _peer_list     => {},
         _peer_addr     => {},
         _trans_sock     => {},
@@ -197,7 +197,7 @@ sub _init_listen_socket
     my ($socket, $proto, $rv, $sock_addr);
 
     eval {
-        $socket = new IO::Socket( Domain => AF_INET );
+        $socket = IO::Socket->new( Domain => AF_INET );
         if ( ! defined($socket) ) {
             die("IO::Socket construction failed");
         }
@@ -318,7 +318,7 @@ Net::BGP::Process - Class encapsulating BGP session multiplexing functionality
 
     use Net::BGP::Process;
 
-    $bgp = new Net::BGP::Process( Port => $port );
+    $bgp = Net::BGP::Process->new( Port => $port );
 
     $bgp->add_peer($peer);
     $bgp->remove_peer($peer);
@@ -338,7 +338,7 @@ intends to establish a session with a single peer.
 
 I<new()> - create a new Net::BGP::Process object
 
-    $bgp = new Net::BGP::Process( Port => $port, ListenAddr => '1.2.3.4' );
+    $bgp = Net::BGP::Process->new( Port => $port, ListenAddr => '1.2.3.4' );
 
 This is the constructor for Net::BGP::Process objects. It returns a
 reference to the newly created object. The following named parameters may
