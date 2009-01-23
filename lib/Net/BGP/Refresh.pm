@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 
-# $Id: Refresh.pm 58 2008-06-20 22:46:08Z kbrint $
-
 package Net::BGP::Refresh;
 use bytes;
 

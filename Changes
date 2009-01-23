@@ -1,6 +1,12 @@
 Revision history for Perl extension Net::BGP.
 
-0.10  
+0.12	2009-01-22
+	- fixed bogus signature in version 0.11
+
+0.11	2009-01-22
+	- fix for AGGREGATOR_ID (Christian Zeng <christian@zengl.net>, RT #42226)
+
+0.10
 	- permit sending attributes with length>255 [RT #36945],
 	  based on a patch submitted by Greg Skinner.
 

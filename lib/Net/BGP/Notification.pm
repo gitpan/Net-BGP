@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 
-# $Id: Notification.pm 43 2007-08-18 18:42:05Z kbrint $
-
 package Net::BGP::Notification;
 
 use strict;

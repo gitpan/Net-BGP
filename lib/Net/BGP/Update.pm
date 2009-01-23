@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 
-# $Id: Update.pm 60 2008-06-21 02:29:37Z kbrint $
-
 package Net::BGP::Update;
 use bytes;
 
@@ -16,7 +14,7 @@ use vars qw(
 use Net::BGP::NLRI qw( :origin );
 
 @ISA     = qw( Exporter Net::BGP::NLRI );
-$VERSION = '0.07';
+$VERSION = '0.11';
 
 ## Module Imports ##
 
@@ -642,10 +640,10 @@ sub _encode_atomic_aggregate
 sub _encode_aggregator
 {
     my $this = shift();
-    $this->_encode_attr(BGP_PATH_ATTR_AGGREGATOR,
-                        pack('Cn',
-                             $this->{_aggregator}->[0],
-                             inet_aton($this->{_aggregator}->[1])));
+    my $aggr = pack('n', $this->{_aggregator}->[0]) .
+        inet_aton($this->{_aggregator}->[1]);
+
+    $this->_encode_attr(BGP_PATH_ATTR_AGGREGATOR, $aggr);
 }
 
 sub _encode_communities

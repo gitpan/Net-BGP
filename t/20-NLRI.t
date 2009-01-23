@@ -1,7 +1,5 @@
 #!/usr/bin/perl -wT
 
-# $Id: 20-NLRI.t 20 2007-07-23 09:54:24Z kbrint $
-
 use strict;
 
 use Test::More tests => 28;

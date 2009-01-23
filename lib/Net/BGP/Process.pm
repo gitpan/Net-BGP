@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 
-# $Id: Process.pm 56 2007-11-08 21:11:21Z kbrint $
-
 package Net::BGP::Process;
 
 use strict;

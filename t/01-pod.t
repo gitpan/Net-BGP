@@ -1,5 +1,3 @@
-# $Id: 01-pod.t 20 2007-07-23 09:54:24Z kbrint $
-
 use Test::More;
 use File::Spec;
 use File::Find;

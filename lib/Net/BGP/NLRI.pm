@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 
-# $Id: NLRI.pm 21 2007-07-28 23:04:58Z kbrint $
-
 package Net::BGP::NLRI;
 
 use strict;
