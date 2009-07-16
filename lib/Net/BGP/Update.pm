@@ -14,7 +14,7 @@ use vars qw(
 use Net::BGP::NLRI qw( :origin );
 
 @ISA     = qw( Exporter Net::BGP::NLRI );
-$VERSION = '0.11';
+$VERSION = '0.13';
 
 ## Module Imports ##
 
@@ -234,6 +234,8 @@ sub _decode_message
             ErrorSubCode => BGP_ERROR_SUBCODE_MALFORMED_ATTR_LIST
         );
     }
+
+    return if $length == 0;    # withdrawn routes only
 
     $this->_decode_path_attributes(substr($buffer, $offset, $length));
     $offset += $length;

@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 24;
+use Test::More tests => 25;
 
 use Net::BGP::Peer qw( :generic ); # dump_hex
 
@@ -93,13 +93,52 @@ push(@msgs, [ qw (
 	0A 00 22 00  1E 0A FF 03  00 1E 0A FF  04 00 1E 0A
 	FF 67 00
 	) ]);
+
+# withdraw 1.2.3.0/24
+push (@msgs, [qw (
+        00 04
+        18 01 02 03
+        00 00
+        ) ]);
+
 my $i = 0;
 foreach my $list (@msgs)
- {
-  my $msg = join('',map { pack('H2',$_); } @{$list});
-  my $update = Net::BGP::Update->_new_from_msg($msg);
-  my $recode = $update->_encode_message;
-  ok($msg eq $recode,'msg = encode(decode(msg)) ' . ++$i);
+{
+    ++$i;
+    my $msg = join('',map { pack('H2',$_); } @{$list});
+
+    my $update = eval { Net::BGP::Update->_new_from_msg($msg) };
+    if ($@)
+    {
+        my $msg = notif_msg($@);
+        ok(0, "decode(msg $i) failed: $msg");
+        next;
+    }
+
+    my $recode = eval { $update->_encode_message };
+    if ($@)
+    {
+        my $msg = notif_msg($@);
+        ok(0, "encode(msg $i) failed: $msg");
+        next;
+    }
+
+    ok($msg eq $recode, "msg = encode(decode(msg)) $i");
  };
+
+sub notif_msg {
+    my $n = shift;
+
+    if (UNIVERSAL::isa($n, 'Net::BGP::Notification'))
+    {
+        my $code    = $n->error_code;
+        my $subcode = $n->error_subcode;
+        return "notification code $code, subcode $subcode";
+    }
+    else
+    {
+        return $n;
+    }
+}
 
 __END__

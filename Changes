@@ -1,5 +1,12 @@
 Revision history for Perl extension Net::BGP.
 
+0.13	2009-07-14
+	- Correctly handle update packets with only withdrawn routes.
+	  (RT #46496). Thanks to:
+		Skewell <olivier.montanuy@m4x.org>
+		Guillaume Lambert <guillaume.lambert-geek@laposte.net>
+		Elisa Jasinska <elisa.jasinska@ams-ix.net>
+
 0.12	2009-01-22
 	- fixed bogus signature in version 0.11
 
