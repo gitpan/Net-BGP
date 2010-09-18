@@ -7,7 +7,7 @@ use vars qw( $VERSION );
 
 ## Inheritance and Versioning ##
 
-$VERSION = '0.13';
+$VERSION = '0.14';
 
 ## End Code Section ##
 

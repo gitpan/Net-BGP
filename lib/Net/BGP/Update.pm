@@ -14,7 +14,7 @@ use vars qw(
 use Net::BGP::NLRI qw( :origin );
 
 @ISA     = qw( Exporter Net::BGP::NLRI );
-$VERSION = '0.13';
+$VERSION = '0.14';
 
 ## Module Imports ##
 
@@ -446,7 +446,7 @@ sub _decode_path_attributes
         if (defined $decode_sub[$type])
         {
             $error_data = substr($buffer, $offset - $len_bytes - 2, $length + $len_bytes + 2);
-            if ( $BGP_PATH_ATTR_FLAGS[$type] != $flags ) {
+            if ( $BGP_PATH_ATTR_FLAGS[$type] != ($flags & ~$BGP_PATH_ATTR_FLAG_EXTLEN) ) {
                 Net::BGP::Notification->throw(
                     ErrorCode    => BGP_ERROR_CODE_UPDATE_MESSAGE,
                     ErrorSubCode => BGP_ERROR_SUBCODE_BAD_ATTR_FLAGS,

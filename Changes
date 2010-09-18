@@ -1,5 +1,10 @@
 Revision history for Perl extension Net::BGP.
 
+0.14	2010-09-18
+	- Fix validation of path attribute flags containing extended
+          length attribute.
+	  Fixed by Simon van der Linden <simon.vanderlinden@uclouvain.be>
+
 0.13	2009-07-14
 	- Correctly handle update packets with only withdrawn routes.
 	  (RT #46496). Thanks to:
